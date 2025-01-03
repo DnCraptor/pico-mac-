@@ -90,10 +90,13 @@ void __time_critical_func() dma_handler_VGA() {
     line_number = screen_line;
     y = screen_line;
 
-//    if (y < 69 || y >= 480 - 69) {
-//        dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
-//        return;
-//    }
+    #if !USE_VGA_RES
+        y -= 69;
+        if (y < 0 || y >= DISP_HEIGHT) {
+            dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
+            return;
+        }
+    #endif
     if (y >= graphics_buffer_height) {
         // заполнение линии цветом фона
         if (y == graphics_buffer_height | y == graphics_buffer_height + 1 |
@@ -110,27 +113,36 @@ void __time_critical_func() dma_handler_VGA() {
 
     //зона прорисовки изображения
     //начальные точки буферов
-//    uint8_t* input_buffer_8bit = input_buffer + (((size_t)(y-69) * 512) >> 3);
-    uint8_t* input_buffer_8bit = input_buffer + (((size_t)y * 640) >> 3);
+    uint8_t* input_buffer_8bit = input_buffer + (((size_t)y * DISP_WIDTH) >> 3);
 
     uint16_t* output_buffer_16bit = (uint16_t *)(*output_buffer);
     output_buffer_16bit += shift_picture / 2; //смещение началы вывода на размер синхросигнала
 
     uint8_t* output_buffer_8bit = (uint8_t *)output_buffer_16bit;
     // 1-bit buf
+    #if USE_VGA_RES
     for (int x = 0; x < 640 / 8; ++x) {
-//        if (x < 8 || x >= 72) {
-//            for (register uint8_t shift = 0; shift < 8; ++shift) {
-//                *output_buffer_8bit++ = 0xC0;
-//            }
-//        } else {
-            register uint8_t i = input_buffer_8bit[x];
-            for (register int8_t shift = 7; shift >= 0; --shift) {
-                register uint8_t t = ((i >> shift) & 1) ? 0 : 0x3F;
-                *output_buffer_8bit++ = t | 0xC0;
-            }
-//        }
+        register uint8_t i = input_buffer_8bit[x];
+        for (register int8_t shift = 7; shift >= 0; --shift) {
+            register uint8_t t = ((i >> shift) & 1) ? 0 : 0x3F;
+            *output_buffer_8bit++ = t | 0xC0;
+        }
     }
+    #else
+    for (int x = 0; x < 640 / 8; ++x) {
+        if (x < 8 || x >= 72) {
+            for (register uint8_t shift = 0; shift < 8; ++shift) {
+                *output_buffer_8bit++ = 0xC0;
+            }
+            continue;
+        }
+        register uint8_t i = input_buffer_8bit[x - 8];
+        for (register int8_t shift = 7; shift >= 0; --shift) {
+            register uint8_t t = ((i >> shift) & 1) ? 0 : 0x3F;
+            *output_buffer_8bit++ = t | 0xC0;
+        }
+    }
+    #endif
     dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
 }
 

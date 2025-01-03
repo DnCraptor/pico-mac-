@@ -45,7 +45,19 @@ static const uint8_t __in_flash() __aligned(4096) umac_disc[400 << 10] = {
 #include "umac-disc.h"
 };
 static const uint8_t __in_flash() __aligned(4096) umac_rom[128 << 10] = {
-#include "umac-rom.h"
+#if UMAC_MEMSIZE==208
+    #if USE_VGA_RES
+        #include "umac-rom-208-vga.h"
+    #else
+        #include "umac-rom-208-orig.h"
+    #endif
+#else
+    #if USE_VGA_RES
+        #include "umac-rom-464-vga.h"
+    #else
+        #include "umac-rom-464-orig.h"
+    #endif
+#endif
 };
 static uint8_t umac_ram[RAM_SIZE];
 
