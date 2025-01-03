@@ -358,12 +358,12 @@ ELSE()
         DEFAULT_THROTTLING=0
 
         DISC_NUM_DRIVES=2
-        DISP_WIDTH=512
-        DISP_HEIGHT=342
+       # DISP_WIDTH=512
+       # DISP_HEIGHT=342
         UMAC_MEMSIZE=208
-       # USE_VGA_RES=1
-       # DISP_WIDTH=640
-       # DISP_HEIGHT=480
+        USE_VGA_RES=1
+        DISP_WIDTH=640
+        DISP_HEIGHT=480
        MUSASHI_CNF="../external/umac/include/m68kconf.h"
     )
 ENDIF()
