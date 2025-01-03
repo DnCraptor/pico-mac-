@@ -12,20 +12,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
-if(WIN32)
-    set(USERHOME $ENV{USERPROFILE})
-else()
-    set(USERHOME $ENV{HOME})
-endif()
-set(sdkVersion 2.0.0)
-set(toolchainVersion 13_2_Rel1)
-set(picotoolVersion 2.0.0)
-set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
-if (EXISTS ${picoVscode})
-    include(${picoVscode})
-endif()
-# ====================================================================================
+cmake_minimum_required(VERSION 3.13)
 set(PICO_BOARD pico CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
@@ -118,8 +105,8 @@ pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
-pico_set_program_name(pico-mac+ "PicoMac port for Murmulator - Macintosh 128-512K emulator by DnCraptor")
-pico_set_program_version(pico-mac+ "0.0.4")
+pico_set_program_name(pico-mac "Pico Mac port for Murmulator - Macintosh 128-512K emulator by DnCraptor")
+pico_set_program_version(pico-mac "0.0.4")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
