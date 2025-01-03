@@ -126,7 +126,7 @@ void __time_critical_func() dma_handler_VGA() {
 //        } else {
             register uint8_t i = input_buffer_8bit[x];
             for (register int8_t shift = 7; shift >= 0; --shift) {
-                register uint8_t t = ((i >> shift) & 1) ? 0x3F : 0;
+                register uint8_t t = ((i >> shift) & 1) ? 0 : 0x3F;
                 *output_buffer_8bit++ = t | 0xC0;
             }
 //        }

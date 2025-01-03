@@ -710,13 +710,55 @@ bool toggle_color() {
 }
 #endif
 
+static int      disc_do_read(void *ctx, uint8_t *data, unsigned int offset, unsigned int len)
+{
+        FIL *fp = (FIL *)ctx;
+        f_lseek(fp, offset);
+        unsigned int did_read = 0;
+        FRESULT fr = f_read(fp, data, len, &did_read);
+        if (fr != FR_OK || len != did_read) {
+                ///printf("disc: f_read returned %d, read %u (of %u)\n", fr, did_read, len);
+                return -1;
+        }
+        return 0;
+}
+
+static int      disc_do_write(void *ctx, uint8_t *data, unsigned int offset, unsigned int len)
+{
+        FIL *fp = (FIL *)ctx;
+        f_lseek(fp, offset);
+        unsigned int did_write = 0;
+        FRESULT fr = f_write(fp, data, len, &did_write);
+        if (fr != FR_OK || len != did_write) {
+                ///printf("disc: f_write returned %d, read %u (of %u)\n", fr, did_write, len);
+                return -1;
+        }
+        return 0;
+}
+
 static void     disc_setup(disc_descr_t discs[DISC_NUM_DRIVES]) {
+    static FIL fd;
+    static FATFS fs;
+    FRESULT fr = f_mount(&fs, "SD", 1);
+    if (fr == FR_OK) {
+        fr = f_open(&fd, "/umac0.img", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+    }
+    if (fr == FR_OK) {
+        discs[0].base = 0; // Means use R/W ops
+        discs[0].read_only = false;
+        discs[0].size = f_size(&fd);
+        discs[0].op_ctx = &fd;
+        discs[0].op_read = disc_do_read;
+        discs[0].op_write = disc_do_write;
+    }
+    else {
         /* If we don't find (or look for) an SD-based image, attempt
          * to use in-flash disc image:
          */
         discs[0].base = (uint8_t*)umac_disc;
         discs[0].read_only = 1;
         discs[0].size = sizeof(umac_disc);
+    }
 }
 
 static int umac_cursor_x = 0;
