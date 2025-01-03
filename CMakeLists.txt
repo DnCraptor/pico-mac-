@@ -29,7 +29,7 @@ option(SOFTTV "Enable TV soft composite output" OFF)
 
 set (PORT_VERSION "0.0.5")
 
-set(I2S ON)
+#set(I2S ON)
 ###set(TV ON)
 ###set(SOFTTV ON)
 ###set(TFT ON)
@@ -115,7 +115,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 IF(NOT I2S)
-    SET(BUILD_NAME "${BUILD_NAME}-PWM")
+#    SET(BUILD_NAME "${BUILD_NAME}-PWM")
     target_compile_definitions(${PROJECT_NAME} PRIVATE AUDIO_PWM_PIN=26)
 ELSEIF(I2S_CS4334)
     target_compile_definitions(${PROJECT_NAME} PRIVATE I2S_CS4334)

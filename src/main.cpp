@@ -38,6 +38,7 @@ extern "C" {
 extern int cursor_x;
 extern int cursor_y;
 extern int cursor_button;
+int cursor_joy_inc_dec = 1;
 
 // Mac binary data:  disc and ROM images
 static const uint8_t __in_flash() __aligned(4096) umac_disc[400 << 10] = {
@@ -335,30 +336,40 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
 static void nespad_tick1(void) {
     nespad_read();
     bool a = (nespad_state & DPAD_A) != 0;
+    bool up = (nespad_state & DPAD_UP) != 0;
+    bool down = (nespad_state & DPAD_DOWN) != 0;
+    bool left = (nespad_state & DPAD_LEFT) != 0;
+    bool right = (nespad_state & DPAD_RIGHT) != 0;
     if (!gamepad1_bits.a && a) {
         cursor_button = true;
     } else if (gamepad1_bits.a && !a) {
         cursor_button = false;
     }
+    if ((gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right)) {
+        cursor_joy_inc_dec++;
+        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+    } else {
+        cursor_joy_inc_dec = 1;
+    }
     gamepad1_bits.a = a;
     gamepad1_bits.b = (nespad_state & DPAD_B) != 0;
     gamepad1_bits.start = (nespad_state & DPAD_START) != 0;
-    gamepad1_bits.up = (nespad_state & DPAD_UP) != 0;
-    gamepad1_bits.down = (nespad_state & DPAD_DOWN) != 0;
-    gamepad1_bits.left = (nespad_state & DPAD_LEFT) != 0;
-    gamepad1_bits.right = (nespad_state & DPAD_RIGHT) != 0;
+    gamepad1_bits.up = up;
+    gamepad1_bits.down = down;
+    gamepad1_bits.left = left;
+    gamepad1_bits.right = right;
 
     if (gamepad1_bits.up) {
-        cursor_y--;
+        cursor_y -= cursor_joy_inc_dec;
     }
     if (gamepad1_bits.down) {
-        cursor_y++;
+        cursor_y += cursor_joy_inc_dec;
     }
     if (gamepad1_bits.left) {
-        cursor_x--;
+        cursor_x -= cursor_joy_inc_dec;
     }
     if (gamepad1_bits.right) {
-        cursor_x++;
+        cursor_x += cursor_joy_inc_dec;
     }
 }
 
@@ -369,26 +380,36 @@ static void nespad_tick2(void) {
     } else if (gamepad2_bits.a && !a) {
         cursor_button = false;
     }
+    bool up = (nespad_state2 & DPAD_UP) != 0;
+    bool down = (nespad_state2 & DPAD_DOWN) != 0;
+    bool left = (nespad_state2 & DPAD_LEFT) != 0;
+    bool right = (nespad_state2 & DPAD_RIGHT) != 0;
+    if ((gamepad2_bits.up && up) || (gamepad2_bits.down && down) || (gamepad2_bits.left && left) || (gamepad2_bits.right && right)) {
+        cursor_joy_inc_dec++;
+        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+    } else {
+        cursor_joy_inc_dec = 1;
+    }
     gamepad2_bits.a = a;
     gamepad2_bits.b = (nespad_state2 & DPAD_B) != 0;
     gamepad2_bits.select = (nespad_state2 & DPAD_SELECT) != 0;
     gamepad2_bits.start = (nespad_state2 & DPAD_START) != 0;
-    gamepad2_bits.up = (nespad_state2 & DPAD_UP) != 0;
-    gamepad2_bits.down = (nespad_state2 & DPAD_DOWN) != 0;
-    gamepad2_bits.left = (nespad_state2 & DPAD_LEFT) != 0;
-    gamepad2_bits.right = (nespad_state2 & DPAD_RIGHT) != 0;
+    gamepad2_bits.up = up;
+    gamepad2_bits.down = down;
+    gamepad2_bits.left = left;
+    gamepad2_bits.right = right;
 
     if (gamepad2_bits.up) {
-        cursor_y--;
+        cursor_y -= cursor_joy_inc_dec;
     }
     if (gamepad2_bits.down) {
-        cursor_y++;
+        cursor_y += cursor_joy_inc_dec;
     }
     if (gamepad2_bits.left) {
-        cursor_x--;
+        cursor_x -= cursor_joy_inc_dec;
     }
     if (gamepad2_bits.right) {
-        cursor_x++;
+        cursor_x += cursor_joy_inc_dec;
     }
 }
 
@@ -460,7 +481,7 @@ void __scratch_x("render") render_core() {
     // 60 FPS loop
 #define frame_tick (16666)
     uint64_t tick = time_us_64();
-    bool tick1 = true;
+    //bool tick1 = true;
     uint64_t last_input_tick = tick;
     while (true) {
 ///        pcm_call();
@@ -469,8 +490,10 @@ void __scratch_x("render") render_core() {
             ps2kbd.tick();
 #endif
 #ifdef USE_NESPAD
-            (tick1 ? nespad_tick1 : nespad_tick2)(); // split call for joy1 and 2
-            tick1 = !tick1;
+           // (tick1 ? nespad_tick1 : nespad_tick2)(); // split call for joy1 and 2
+           // tick1 = !tick1;
+           nespad_tick1();
+           nespad_tick2();
 #endif
             last_input_tick = tick;
         }

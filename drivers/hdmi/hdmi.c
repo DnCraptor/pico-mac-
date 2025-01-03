@@ -26,6 +26,7 @@ static uint32_t palette[256];
 
 #define SCREEN_WIDTH (320)
 #define SCREEN_HEIGHT (240)
+static uint8_t* graphics_buffer = 0;
 static int graphics_buffer_width = 0;
 static int graphics_buffer_height = 0;
 static int graphics_buffer_shift_x = 0;
@@ -156,9 +157,6 @@ static void pio_set_x(PIO pio, const int sm, uint32_t v) {
     pio_sm_exec(pio, sm, instr_mov);
 }
 
-uint8_t* getLineBuffer(int line);
-void ESPectrum_vsync();
-
 static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
     static uint32_t inx_buf_dma;
     static uint line = 0;
@@ -175,9 +173,8 @@ static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
 
     if ((line & 1) == 0) return;
 
-    if (line == 480) {
-        ESPectrum_vsync();
-    }
+    uint8_t* input_buffer = graphics_buffer;
+    if (!input_buffer) return;
 
     inx_buf_dma++;
 
@@ -187,8 +184,6 @@ static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
         uint8_t* output_buffer = activ_buf + 72; //для выравнивания синхры;
         int y = line >> 1;
         //область изображения
-        uint8_t* input_buffer = getLineBuffer(y);
-        if (!input_buffer) return;
         switch (graphics_mode) {
             case GRAPHICSMODE_DEFAULT:
                 //заполняем пространство сверху и снизу графического буфера
@@ -530,6 +525,7 @@ void graphics_set_palette(uint8_t i, uint32_t color888) {
 };
 
 void graphics_set_buffer(uint8_t* buffer, uint16_t width, uint16_t height) {
+    graphics_buffer = buffer;
     graphics_buffer_width = width;
     graphics_buffer_height = height;
 };
