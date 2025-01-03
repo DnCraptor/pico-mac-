@@ -203,7 +203,7 @@ static void process_mouse_report(hid_mouse_report_t const * report)
 {
     cursor_button = report->buttons & MOUSE_BUTTON_LEFT;
     cursor_x += report->x;
-    cursor_y -= report->y; // TODO: DPI
+    cursor_y += report->y; // TODO: DPI
   /**
 
   //------------- button state  -------------//

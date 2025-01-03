@@ -27,7 +27,7 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-set (PORT_VERSION "0.0.4")
+set (PORT_VERSION "0.0.5")
 
 set(I2S ON)
 ###set(TV ON)
@@ -106,7 +106,7 @@ target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
 pico_set_program_name(pico-mac "Pico Mac port for Murmulator - Macintosh 128-512K emulator by DnCraptor")
-pico_set_program_version(pico-mac "0.0.4")
+pico_set_program_version(pico-mac PORT_VERSION)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
