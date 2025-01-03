@@ -5,6 +5,22 @@
 The Murmulator schema: https://github.com/AlexEkb4ever/MURMULATOR_classical_scheme<br/>
 ![Murmulator Schematics](https://github.com/javavi/pico-infonesPlus/blob/main/assets/Murmulator-1_BSchem.JPG)<br/>
 
+pico-mac - проект основанный на эмуляторе umac, так же известном, как Mini vMac. Оригинальный порт под пику был выложен тут: https://github.com/evansm7/pico-mac, но он не подходит под распиновку Мурмулятора. Данный же порт учитывает все особенности именно Мурмулятора. в текущей версии (0.0.5) поддерживаются:
+
+- 208Kb RAM
+- VGA 640*480@60Hz
+- USB mouse
+- PS/2 or USB keyboard ("Command" button - left or right Win)
+- mouse emulation on NES (Dendy-8) joysticsks
+- mouse emulation on USB joysticsks
+
+Файл дискового образа (umac0.img) необходимо расположить в корне sd-карточки.
+
+Дополнительные благодарности:<br/>
+Базовое ПЗУ для эмулятора "1986-03 - 4D1F8172 - MacPlus v3.ROM" взято с сайта https://www.macintoshrepository.org/7038-all-macintosh-roms-68k-ppc- (архив Old_World_Mac_Roms.zip) и пропатчено для поддержки нестандартного объёма памяти и разрешения (оригинальное - 512х342)<br/>
+Файл дискового образа (umac0.img) взят с сайта https://picomac.bluescsi.com/<br/>
+
+Оригинальный README.md:
 
 # Pico Micro Mac (pico-umac)
 
