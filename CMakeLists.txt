@@ -12,8 +12,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-cmake_minimum_required(VERSION 3.13)
-# == DO NEVER EDIT THE NEXT LINES for Raspberry Pi Pico VS Code Extension to work ==
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
 else()
@@ -30,7 +29,7 @@ endif()
 set(PICO_BOARD pico CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
-project(pico-mac+ C CXX ASM)
+project(pico-mac C CXX ASM)
 
 option(I2S "Enable I2S sound" OFF)
 option(I2S_CS4334 "Enable I2S CS4334 sound" OFF)
@@ -41,7 +40,7 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-set (PORT_VERSION "0.0.1")
+set (PORT_VERSION "0.0.4")
 
 set(I2S ON)
 ###set(TV ON)
@@ -119,8 +118,8 @@ pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
-pico_set_program_name(pico-mac+ "MacPlus port for Murmulator - Macintosh 128-512K emulator by DnCraptor")
-pico_set_program_version(pico-mac+ "0.0.1")
+pico_set_program_name(pico-mac+ "PicoMac port for Murmulator - Macintosh 128-512K emulator by DnCraptor")
+pico_set_program_version(pico-mac+ "0.0.4")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
@@ -368,7 +367,7 @@ ELSE()
         TFT_DATA_PIN=12
         TFT_CLK_PIN=13
 
-	    PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
+        PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
         DEFAULT_THROTTLING=0
 
         DISC_NUM_DRIVES=2
