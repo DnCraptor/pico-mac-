@@ -39,7 +39,6 @@ extern "C" {
 extern int cursor_x;
 extern int cursor_y;
 extern int cursor_button;
-int cursor_joy_inc_dec = 1;
 
 // Mac binary data:  disc and ROM images
 static const uint8_t __in_flash() __aligned(4096) umac_disc[400 << 10] = {
@@ -82,6 +81,8 @@ static input_bits_t gamepad2_bits = { false, false, false, false, false, false, 
 
 /* Renderer loop on Pico's second core */
 ///void repeat_handler(void);
+
+uint8_t pressed_key[256] = { 0 };
 
 extern "C" bool handleScancode(const uint32_t ps2scancode) {
     #if 0
@@ -343,16 +344,16 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
     return true;
 }
 
-
 #if USE_NESPAD
 
 static void nespad_tick1(void) {
+    static int cursor_joy_inc_dec = 1;
     nespad_read();
-    bool a = (nespad_state & DPAD_A) != 0;
-    bool up = (nespad_state & DPAD_UP) != 0;
-    bool down = (nespad_state & DPAD_DOWN) != 0;
-    bool left = (nespad_state & DPAD_LEFT) != 0;
-    bool right = (nespad_state & DPAD_RIGHT) != 0;
+    bool a = (nespad_state & DPAD_A) || pressed_key[HID_KEY_KEYPAD_ENTER];
+    bool up = (nespad_state & DPAD_UP) || pressed_key[HID_KEY_KEYPAD_8];
+    bool down = (nespad_state & DPAD_DOWN) || pressed_key[HID_KEY_KEYPAD_5] || pressed_key[HID_KEY_KEYPAD_2];
+    bool left = (nespad_state & DPAD_LEFT) || pressed_key[HID_KEY_KEYPAD_4];
+    bool right = (nespad_state & DPAD_RIGHT) || pressed_key[HID_KEY_KEYPAD_6];
     if (!gamepad1_bits.a && a) {
         cursor_button = true;
     } else if (gamepad1_bits.a && !a) {
@@ -391,6 +392,7 @@ static void nespad_tick1(void) {
 }
 
 static void nespad_tick2(void) {
+    static int cursor_joy_inc_dec = 1;
     bool a = (nespad_state2 & DPAD_A) != 0;
     if (!gamepad2_bits.a && a) {
         cursor_button = true;
@@ -447,8 +449,6 @@ inline static bool isInReport(hid_keyboard_report_t const *report, const unsigne
     }
     return false;
 }
-
-uint8_t pressed_key[256] = { 0 }; // TODO: optimize it
 
 void __not_in_flash_func(process_kbd_report)(
     hid_keyboard_report_t const *report,

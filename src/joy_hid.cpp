@@ -25,6 +25,7 @@ usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count) {
 }
 
 void tuh_xinput_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+    static int cursor_joy_inc_dec = 1;
     auto xid_itf = (xinputh_interface_t *)report;
     const xinput_gamepad_t* p = &xid_itf->pad;
 
@@ -59,6 +60,12 @@ void tuh_xinput_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t c
         left = dpad & XINPUT_GAMEPAD_DPAD_LEFT;
         right = dpad & XINPUT_GAMEPAD_DPAD_RIGHT;
     }
+    if ((gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right)) {
+        cursor_joy_inc_dec++;
+        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+    } else {
+        cursor_joy_inc_dec = 1;
+    }
 
     gamepad1_bits.down = down;
     gamepad1_bits.up = up;
@@ -66,16 +73,16 @@ void tuh_xinput_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t c
     gamepad1_bits.right = right;
 
     if (gamepad1_bits.up) {
-        cursor_y--;
+        cursor_y -= cursor_joy_inc_dec;
     }
     if (gamepad1_bits.down) {
-        cursor_y++;
+        cursor_y += cursor_joy_inc_dec;
     }
     if (gamepad1_bits.left) {
-        cursor_x--;
+        cursor_x -= cursor_joy_inc_dec;
     }
     if (gamepad1_bits.right) {
-        cursor_x++;
+        cursor_x += cursor_joy_inc_dec;
     }
 
     /*char tmp[128];
