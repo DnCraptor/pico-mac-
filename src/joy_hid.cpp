@@ -25,7 +25,7 @@ usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count) {
 }
 
 void tuh_xinput_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
-    static int cursor_joy_inc_dec = 1;
+    static float cursor_joy_inc_dec = 1;
     auto xid_itf = (xinputh_interface_t *)report;
     const xinput_gamepad_t* p = &xid_itf->pad;
 
@@ -61,8 +61,8 @@ void tuh_xinput_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t c
         right = dpad & XINPUT_GAMEPAD_DPAD_RIGHT;
     }
     if ((gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right)) {
-        cursor_joy_inc_dec++;
-        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+        cursor_joy_inc_dec += 0.1;
+        if (cursor_joy_inc_dec > 30) cursor_joy_inc_dec = 30;
     } else {
         cursor_joy_inc_dec = 1;
     }

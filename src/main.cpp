@@ -347,7 +347,7 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
 #if USE_NESPAD
 
 static void nespad_tick1(void) {
-    static int cursor_joy_inc_dec = 1;
+    static float cursor_joy_inc_dec = 1;
     nespad_read();
     bool a = (nespad_state & DPAD_A) || pressed_key[HID_KEY_KEYPAD_ENTER];
     bool up = (nespad_state & DPAD_UP) || pressed_key[HID_KEY_KEYPAD_8];
@@ -360,8 +360,8 @@ static void nespad_tick1(void) {
         cursor_button = false;
     }
     if ((gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right)) {
-        cursor_joy_inc_dec++;
-        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+        cursor_joy_inc_dec += 0.1;
+        if (cursor_joy_inc_dec > 30) cursor_joy_inc_dec = 30;
     } else {
         cursor_joy_inc_dec = 1;
     }
@@ -392,7 +392,7 @@ static void nespad_tick1(void) {
 }
 
 static void nespad_tick2(void) {
-    static int cursor_joy_inc_dec = 1;
+    static float cursor_joy_inc_dec = 1;
     bool a = (nespad_state2 & DPAD_A) != 0;
     if (!gamepad2_bits.a && a) {
         cursor_button = true;
@@ -404,8 +404,8 @@ static void nespad_tick2(void) {
     bool left = (nespad_state2 & DPAD_LEFT) != 0;
     bool right = (nespad_state2 & DPAD_RIGHT) != 0;
     if ((gamepad2_bits.up && up) || (gamepad2_bits.down && down) || (gamepad2_bits.left && left) || (gamepad2_bits.right && right)) {
-        cursor_joy_inc_dec++;
-        if (cursor_joy_inc_dec > 10) cursor_joy_inc_dec = 10;
+        cursor_joy_inc_dec += 0.1;
+        if (cursor_joy_inc_dec > 30) cursor_joy_inc_dec = 30;
     } else {
         cursor_joy_inc_dec = 1;
     }
@@ -503,8 +503,8 @@ void __scratch_x("render") render_core() {
     sem_acquire_blocking(&vga_start_semaphore);
 
     uint32_t tickKbdRep1 = time_us_32();
-    // 60 FPS loop
-#define frame_tick (16666)
+    // 40 FPS loop
+#define frame_tick (25000)
     uint64_t tick = time_us_64();
     //bool tick1 = true;
     uint64_t last_input_tick = tick;
