@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdarg>
 
+#include <hardware/watchdog.h>
 #include <pico/multicore.h>
 #include <pico/stdlib.h>
 #include <hardware/pio.h>
@@ -365,7 +366,11 @@ static void nespad_tick1(void) {
     }
     gamepad1_bits.a = a;
     gamepad1_bits.b = (nespad_state & DPAD_B) != 0;
-    gamepad1_bits.start = (nespad_state & DPAD_START) != 0;
+    //gamepad1_bits.start =
+    if ((nespad_state & DPAD_START) && (nespad_state & DPAD_SELECT)) {
+        watchdog_enable(10, true);
+        while (true) sleep_ms(10);
+    }
     gamepad1_bits.up = up;
     gamepad1_bits.down = down;
     gamepad1_bits.left = left;
@@ -404,8 +409,12 @@ static void nespad_tick2(void) {
     }
     gamepad2_bits.a = a;
     gamepad2_bits.b = (nespad_state2 & DPAD_B) != 0;
-    gamepad2_bits.select = (nespad_state2 & DPAD_SELECT) != 0;
-    gamepad2_bits.start = (nespad_state2 & DPAD_START) != 0;
+//    gamepad2_bits.select = (nespad_state2 & DPAD_SELECT) != 0;
+//    gamepad2_bits.start = (nespad_state2 & DPAD_START) != 0;
+    if ((nespad_state2 & DPAD_START) && (nespad_state2 & DPAD_SELECT)) {
+        watchdog_enable(10, true);
+        while (true) sleep_ms(10);
+    }
     gamepad2_bits.up = up;
     gamepad2_bits.down = down;
     gamepad2_bits.left = left;
@@ -470,6 +479,10 @@ void __not_in_flash_func(process_kbd_report)(
                 kbd_queue_push(hid_code, true);
             }
         }
+    }
+    if (pressed_key[HID_KEY_CONTROL_LEFT] && pressed_key[HID_KEY_ALT_LEFT] && pressed_key[HID_KEY_DELETE]) {
+        watchdog_enable(10, true);
+        while (true) sleep_ms(10);
     }
 }
 
