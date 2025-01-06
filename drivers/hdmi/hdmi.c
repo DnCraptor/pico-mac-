@@ -29,8 +29,6 @@ static uint32_t palette[256];
 static uint8_t* graphics_buffer = 0;
 static int graphics_buffer_width = 0;
 static int graphics_buffer_height = 0;
-static int graphics_buffer_shift_x = 0;
-static int graphics_buffer_shift_y = 0;
 
 //DMA каналы
 //каналы работы с первичным графическим буфером
@@ -173,9 +171,6 @@ static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
 
     if ((line & 1) == 0) return;
 
-    uint8_t* input_buffer = graphics_buffer;
-    if (!input_buffer) return;
-
     inx_buf_dma++;
 
     uint8_t* activ_buf = (uint8_t *)dma_lines[inx_buf_dma & 1];
@@ -187,28 +182,29 @@ static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
         switch (graphics_mode) {
             case GRAPHICSMODE_DEFAULT:
                 //заполняем пространство сверху и снизу графического буфера
-                if (false || (graphics_buffer_shift_y > y) || (y >= (graphics_buffer_shift_y + graphics_buffer_height))
-                    || (graphics_buffer_shift_x >= SCREEN_WIDTH) || (
-                        (graphics_buffer_shift_x + graphics_buffer_width) < 0)) {
+                if (false || (0 > y) || (y >= (graphics_buffer_height)) || (graphics_buffer_width < 0)) {
                     memset(output_buffer, 255, SCREEN_WIDTH);
                     break;
                 }
 
                 uint8_t* activ_buf_end = output_buffer + SCREEN_WIDTH;
             //рисуем пространство слева от буфера
-                for (int i = graphics_buffer_shift_x; i-- > 0;) {
+                for (int i = 0; i-- > 0;) {
                     *output_buffer++ = 255;
                 }
 
             //рисуем сам видеобуфер+пространство справа
-///                input_buffer = &graphics_buffer[(y - graphics_buffer_shift_y) * graphics_buffer_width];
-                const uint8_t* input_buffer_end = input_buffer + graphics_buffer_width;
-                if (graphics_buffer_shift_x < 0) input_buffer -= graphics_buffer_shift_x;
+                uint8_t* input_buffer = &graphics_buffer[y * graphics_buffer_width / 8];
+                const uint8_t* input_buffer_end = input_buffer + graphics_buffer_width / 8;
                 register size_t x = 0;
                 while (activ_buf_end > output_buffer) {
                     if (input_buffer < input_buffer_end) {
-                        register uint8_t c = input_buffer[(x++) ^ 2];
+                        register uint8_t c = input_buffer[x];
                         *output_buffer++ = map64colors[c & 0b00111111];
+                        for (register int8_t shift = 7; shift >= 0; --shift) {
+                            register uint8_t c = ((c >> shift) & 1) ? 200 : 215;
+                            *output_buffer++ = map64colors[c & 0b00111111];
+                        }
                     }
                     else
                         *output_buffer++ = 255;
@@ -637,6 +633,4 @@ void graphics_set_bgcolor(uint32_t color888) //определяем зарезе
 };
 
 void graphics_set_offset(int x, int y) {
-    graphics_buffer_shift_x = x;
-    graphics_buffer_shift_y = y;
 };

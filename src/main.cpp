@@ -49,7 +49,11 @@ static const uint8_t __in_flash() __aligned(4096) umac_rom[128 << 10] = {
     #if USE_VGA_RES
         #include "umac-rom-208-vga.h"
     #else
-        #include "umac-rom-208-orig.h"
+        #ifdef HDMI
+            #include "umac-rom-208-320.h"
+        #else
+            #include "umac-rom-208-orig.h"
+        #endif
     #endif
 #else
     #if USE_VGA_RES
