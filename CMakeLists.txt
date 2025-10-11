@@ -4,16 +4,16 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.0.0)
-set(toolchainVersion 13_2_Rel1)
-set(picotoolVersion 2.0.0)
+set(sdkVersion 2.1.1)
+set(toolchainVersion 14_2_Rel1)
+set(picotoolVersion 2.1.1)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
 cmake_minimum_required(VERSION 3.13)
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
 project(pico-mac C CXX ASM)
@@ -27,7 +27,7 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-set (PORT_VERSION "0.0.6")
+set (PORT_VERSION "0.0.7")
 
 #set(I2S ON)
 ###set(TV ON)
@@ -45,6 +45,7 @@ set(FLASH_SIZE 2048)
 set(FLASH_SIZE_GREEN ON)
 ###set(CPU_MHZ 408)
 set(CPU_MHZ 378)
+#set(CPU_MHZ 366)
 
 
 
@@ -221,7 +222,7 @@ IF(MURM2)
         PSRAM_PIN_MISO=4
 
         # NES Gamepad
-        USE_NESPAD
+#        USE_NESPAD
         NES_GPIO_CLK=20
         NES_GPIO_LAT=21
         NES_GPIO_DATA=26
@@ -318,7 +319,7 @@ ELSE()
         SDCARD_PIN_SPI0_MOSI=3
         SDCARD_PIN_SPI0_MISO=4
         
-        PSRAM
+        #PSRAM
         # PSRAM_MUTEX=1
         PSRAM_SPINLOCK=1
         PSRAM_ASYNC=1
@@ -334,7 +335,7 @@ ELSE()
 #        PSRAM_PIN_MISO=16
 
         # NES Gamepad
-        USE_NESPAD
+    #    USE_NESPAD
         NES_GPIO_CLK=14
         NES_GPIO_LAT=15
         NES_GPIO_DATA=16
@@ -358,18 +359,19 @@ ELSE()
         DEFAULT_THROTTLING=0
 
         DISC_NUM_DRIVES=2
-        DISP_WIDTH=512
-        DISP_HEIGHT=342
-        UMAC_MEMSIZE=208
-#        USE_VGA_RES=1
-#        DISP_WIDTH=640
-#        DISP_HEIGHT=480
+ #       DISP_WIDTH=512
+#        DISP_HEIGHT=342
+#        UMAC_MEMSIZE=208
+        UMAC_MEMSIZE=464
+        USE_VGA_RES=1
+        DISP_WIDTH=640
+        DISP_HEIGHT=480
         #DISP_WIDTH=320
         #DISP_HEIGHT=240
        MUSASHI_CNF="../external/umac/include/m68kconf.h"
     )
 ENDIF()
 
-pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
+#pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections)
 pico_add_extra_outputs(${PROJECT_NAME})

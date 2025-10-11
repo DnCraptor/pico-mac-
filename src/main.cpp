@@ -2,6 +2,11 @@
 #include <cstring>
 #include <cstdarg>
 
+#ifdef PICO_RP2350
+#include <hardware/regs/qmi.h>
+#include <hardware/structs/qmi.h>
+#endif
+
 #include <hardware/watchdog.h>
 #include <pico/multicore.h>
 #include <pico/stdlib.h>
@@ -671,13 +676,33 @@ static void     poll_umac()
         }
 }
 
+#ifndef PICO_RP2040
+void __not_in_flash() flash_timings() {
+        const int max_flash_freq = 88 * MHZ;
+        const int clock_hz = CPU_MHZ * MHZ;
+        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
+        if (divisor == 1 && clock_hz > 100000000) {
+            divisor = 2;
+        }
+        int rxdelay = divisor;
+        if (clock_hz / divisor > 100000000) {
+            rxdelay += 1;
+        }
+        qmi_hw->m[0].timing = 0x60007000 |
+                            rxdelay << QMI_M0_TIMING_RXDELAY_LSB |
+                            divisor << QMI_M0_TIMING_CLKDIV_LSB;
+}
+#endif
+
 int main() {
 #if !PICO_RP2040
-    vreg_set_voltage(VREG_VOLTAGE_1_40);
+    vreg_disable_voltage_limit();
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
+    flash_timings();
 #else
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
 #endif
-    sleep_ms(10);
+    sleep_ms(100);
     set_sys_clock_khz(CPU_MHZ * KHZ, true);
 
 #ifdef KBDUSB
