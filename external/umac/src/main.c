@@ -77,7 +77,13 @@ static jmp_buf main_loop_jb;
 
 static int disassemble = 0;
 
-#define UMAC_EXECLOOP_QUANTUM   5000
+#define UMAC_EXECLOOP_QUANTUM   46
+
+/* Keyboard response must not come too soon after the command is received.
+ * With the smaller quantum we express this as a number of quanta rather
+ * than raw microseconds (100 quanta x 46 us = 4600 us ~= old 5 ms).
+ */
+#define KBD_RESPONSE_QUANTA     100
 
 static void    update_overlay_layout();
 
@@ -258,7 +264,7 @@ static void     kbd_check_work()
          * hastiness).
          */
         if (kbd_last_cmd &&
-            ((global_time_us - kbd_last_cmd_time) > UMAC_EXECLOOP_QUANTUM)) {
+            (global_time_us - kbd_last_cmd_time > ((uint64_t)KBD_RESPONSE_QUANTA * UMAC_EXECLOOP_QUANTUM))) {
                 MDBG("KBD: got cmd 0x%x\n", kbd_last_cmd);
                 kbd_rx(kbd_last_cmd);
                 kbd_last_cmd = 0;

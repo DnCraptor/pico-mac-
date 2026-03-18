@@ -40,9 +40,16 @@ struct via_cb {
 void    via_init(struct via_cb *cb);
 void    via_write(unsigned int address, uint8_t data);
 uint8_t via_read(unsigned int address);
-void    via_tick(uint64_t time);
+void    via_tick(uint64_t time_us);
 /* Trigger an event on CA1 or CA2: */
 void    via_caX_event(int ca);
 void    via_sr_rx(uint8_t val);
+
+/* Direct register accessors for platform sound layer:
+ *   via_get_ra() bits: [6]=vid.pg2  [3]=snd.pg2  [2:0]=volume
+ *   via_get_rb() bits: [7]=sndres (0=sound disabled)
+ */
+uint8_t via_get_ra(void);
+uint8_t via_get_rb(void);
 
 #endif

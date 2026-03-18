@@ -1,6 +1,7 @@
 /* umac VIA emulation
  *
  * Bare minimum support for ports A/B, shift register, and IRQs.
+ * Timer 1 (free-run mode) added for Mac 128K sound generation.
  * A couple of Mac-specific assumptions in here, as per comments...
  *
  * Copyright 2024 Matt Evans
@@ -56,6 +57,8 @@
 #define  VIA_IRQ_CA     0x01
 #define  VIA_IRQ_CB     0x02
 #define  VIA_IRQ_SR     0x04
+#define  VIA_IRQ_T2     0x20
+#define  VIA_IRQ_T1     0x40
 #define VIA_IER         14
 #define VIA_RA_ALT      15 // No-handshake version
 
@@ -84,11 +87,54 @@ static int irq_status = 0;
 static uint8_t irq_active = 0;
 static uint8_t irq_enable = 0;
 
+/* ---------------------------------------------------------------------------
+ * Timer 1
+ *
+ * Mac 128K uses T1 in free-run mode (ACR bit 6 = 1) to generate sound
+ * interrupts at ~22 kHz.  The ROM's T1 ISR fills the inactive sound buffer
+ * and toggles snd.pg2; actual audio output happens in hardware (DMA-like).
+ *
+ * VIA E-clock = CPU/10 = 7,833,600 / 10 = 783,360 Hz
+ * T1 period   = (latch + 2) / 783,360  seconds
+ * Typical Mac latch = 0x22 (34) → period ≈ 45.96 µs → 21,760 Hz
+ *
+ * We track time in microseconds (matching via_tick's argument) and fire the
+ * T1 IRQ whenever the accumulated time exceeds one period.  A single IRQ is
+ * raised per via_tick call — the caller (umac_loop) must ensure the quantum
+ * is ≤ one T1 period so ticks are never skipped.
+ * ---------------------------------------------------------------------------
+ */
+
+/* VIA E-clock in Hz — used to convert latch value to µs period */
+#define VIA_E_CLOCK_HZ  783360ULL
+
+static int      t1_armed        = 0;   /* non-zero when T1 is running        */
+static uint64_t t1_period_us    = 0;   /* period in µs, computed from latch  */
+static uint64_t t1_last_fire_us = 0;   /* absolute time of last T1 IRQ (µs)  */
+
+/* Recompute t1_period_us from the current latch registers. */
+static void via_t1_recalc(void)
+{
+        uint16_t latch = (uint16_t)via_regs[VIA_T1LL] |
+                         ((uint16_t)via_regs[VIA_T1LH] << 8);
+        if (latch == 0) {
+                t1_period_us = 0;
+                return;
+        }
+        /* +2: one extra cycle for latch→counter load, one for the underflow */
+        t1_period_us = ((uint64_t)(latch + 2) * 1000000ULL) / VIA_E_CLOCK_HZ;
+        if (t1_period_us == 0)
+                t1_period_us = 1; /* never zero when latch is non-zero */
+}
+
 void    via_init(struct via_cb *cb)
 {
         for (int i = 0; i < 16; i++)
                 via_regs[i] = 0;
         via_regs[VIA_RA] = 0x10; // Overlay, FIXME
+        t1_armed        = 0;
+        t1_period_us    = 0;
+        t1_last_fire_us = 0;
         if (cb)
                 via_callbacks = *cb;
 }
@@ -206,6 +252,43 @@ void    via_write(unsigned int address, uint8_t data)
                 via_update_sr(data);
                 dowrite = 0;
                 break;
+
+        /* ----------------------------------------------------------------
+         * Timer 1 registers
+         *
+         * Write T1CL / T1LL  → latch low byte only (counter not touched)
+         * Write T1LH         → latch high byte only (counter not touched)
+         * Write T1CH         → latch high byte + reload counter + arm timer
+         *                      + clear T1 IRQ flag
+         * ---------------------------------------------------------------- */
+        case VIA_T1CL:
+        case VIA_T1LL:
+                via_regs[VIA_T1LL] = data;
+                via_t1_recalc();
+                dowrite = 0;
+                break;
+
+        case VIA_T1LH:
+                via_regs[VIA_T1LH] = data;
+                via_t1_recalc();
+                dowrite = 0;
+                break;
+
+        case VIA_T1CH:
+                /* High byte goes to both latch-H and counter-H */
+                via_regs[VIA_T1LH] = data;
+                via_regs[VIA_T1CL] = via_regs[VIA_T1LL]; /* reload low  */
+                via_regs[VIA_T1CH] = data;                /* reload high */
+                irq_active &= ~VIA_IRQ_T1;                /* clear flag  */
+                via_t1_recalc();
+                t1_armed = 1;
+                /* t1_last_fire_us stays as-is; via_tick will set it on
+                 * the first call after arming if it is still 0.        */
+                VDBG("[VIA: T1 armed, period=%llu us]\n",
+                     (unsigned long long)t1_period_us);
+                dowrite = 0;
+                break;
+
         case VIA_IER:
                 if (data & 0x80)
                         irq_enable |= data & 0x7f;
@@ -275,6 +358,14 @@ uint8_t via_read(unsigned int address)
                 irq_active &= ~0x04;
                 break;
 
+        /* Reading T1CL clears the T1 IRQ flag (per 6522 datasheet) */
+        case VIA_T1CL:
+                irq_active &= ~VIA_IRQ_T1;
+                /* Return approximate counter low byte (optional but tidy) */
+                data = via_regs[VIA_T1CL];
+                via_assess_irq();
+                break;
+
         case VIA_IER:
                 data = 0x80 | irq_enable;
                 break;
@@ -290,11 +381,33 @@ uint8_t via_read(unsigned int address)
         return data;
 }
 
-/* Time param in us */
-void    via_tick(uint64_t time)
+/* Time param in µs.
+ *
+ * Called once per UMAC_EXECLOOP_QUANTUM.  The quantum must be ≤ t1_period_us
+ * so that at most one T1 tick occurs per call (the caller sets quantum = 46 µs
+ * which matches a typical Mac T1 period of ~46 µs).
+ */
+void    via_tick(uint64_t time_us)
 {
-        (void)time;
-        // FIXME: support actual timers.....!
+        if (!t1_armed || t1_period_us == 0)
+                return;
+
+        /* Initialise reference time on the first tick after arming */
+        if (t1_last_fire_us == 0)
+                t1_last_fire_us = time_us;
+
+        if (time_us - t1_last_fire_us >= t1_period_us) {
+                t1_last_fire_us += t1_period_us;
+
+                irq_active |= VIA_IRQ_T1;
+
+                /* One-shot mode (ACR bit 6 = 0): disarm after firing */
+                if (!(via_regs[VIA_ACR] & 0x40))
+                        t1_armed = 0;
+
+                VDBG("[VIA: T1 fired, active=%02x]\n", irq_active);
+                via_assess_irq();
+        }
 }
 
 /* External world pipes CA1/CA2 events (passage of time) in here:
@@ -323,4 +436,20 @@ void    via_sr_rx(uint8_t val)
         } else {
                 VDBG("[VIA ACR SR state %02x, not receiving]\n", via_regs[VIA_ACR]);
         }
+}
+
+/* Return the current value of Port A output register.
+ * Used by the platform layer to read snd.pg2 (bit 3) and volume (bits 2:0).
+ */
+uint8_t via_get_ra(void)
+{
+        return via_regs[VIA_RA];
+}
+
+/* Return the current value of Port B output register.
+ * Used by the platform layer to read sndres (bit 7).
+ */
+uint8_t via_get_rb(void)
+{
+        return via_regs[VIA_RB];
 }

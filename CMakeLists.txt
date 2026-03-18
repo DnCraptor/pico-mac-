@@ -4,9 +4,9 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.1.1)
+set(sdkVersion 2.2.0)
 set(toolchainVersion 14_2_Rel1)
-set(picotoolVersion 2.1.1)
+set(picotoolVersion 2.2.0)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
@@ -27,7 +27,7 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-set (PORT_VERSION "0.0.7")
+set (PORT_VERSION "0.0.8")
 
 #set(I2S ON)
 ###set(TV ON)
@@ -50,9 +50,9 @@ set(CPU_MHZ 378)
 
 
 IF(MURM2)
-    SET(BUILD_NAME "m2-${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
+    SET(BUILD_NAME "m2p2-${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
 ELSE()
-    SET(BUILD_NAME "${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
+    SET(BUILD_NAME "m1p2-${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
 ENDIF()
 
 set(CMAKE_C_STANDARD 11)
@@ -222,7 +222,7 @@ IF(MURM2)
         PSRAM_PIN_MISO=4
 
         # NES Gamepad
-#        USE_NESPAD
+        USE_NESPAD
         NES_GPIO_CLK=20
         NES_GPIO_LAT=21
         NES_GPIO_DATA=26
@@ -242,60 +242,6 @@ IF(MURM2)
         TFT_CLK_PIN=19
         
         PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
-        DEFAULT_THROTTLING=0
-    )
-ELSEIF(MONSTR)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
-
-        KBD_CLOCK_PIN=0
-        KBD_DATA_PIN=1
-
-    #    LOAD_WAV_PIO=22
-        PWM_PIN0=26
-        PWM_PIN1=27
-        BEEPER_PIN=28
-        SOUND_FREQUENCY=50000
-        I2S_FREQUENCY=96000
-
-        # SDCARD
-        SDCARD_PIN_SPI0_CS=23 
-        SDCARD_PIN_SPI0_SCK=18 
-        SDCARD_PIN_SPI0_MOSI=19 
-        SDCARD_PIN_SPI0_MISO=20
-        
-        #PSRAM
-        # PSRAM_MUTEX=1
-        PSRAM_SPINLOCK=1
-        PSRAM_ASYNC=1
-
-        PSRAM_PIN_CS=5
-        PSRAM_PIN_SCK=2
-        PSRAM_PIN_MOSI=3
-        PSRAM_PIN_MISO=4
-
-        # NES Gamepad
-    #    USE_NESPAD
-        NES_GPIO_CLK=14
-        NES_GPIO_LAT=15
-        NES_GPIO_DATA=16
-
-        # VGA 8 pins starts from pin:
-        VGA_BASE_PIN=6
-
-        # HDMI 8 pins starts from pin:
-        HDMI_BASE_PIN=6
-
-        # TFT
-        TFT_CS_PIN=6
-        TFT_RST_PIN=8
-        TFT_LED_PIN=9
-        TFT_DC_PIN=10
-        TFT_DATA_PIN=12
-        TFT_CLK_PIN=13
-
-	    PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
         DEFAULT_THROTTLING=0
     )
 ELSE()
@@ -335,7 +281,7 @@ ELSE()
 #        PSRAM_PIN_MISO=16
 
         # NES Gamepad
-    #    USE_NESPAD
+        USE_NESPAD
         NES_GPIO_CLK=14
         NES_GPIO_LAT=15
         NES_GPIO_DATA=16

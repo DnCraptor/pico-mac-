@@ -15,10 +15,13 @@
 #include <hardware/vreg.h>
 #include <hardware/sync.h>
 #include <hardware/flash.h>
+#include <hardware/pwm.h>
 
 #include "graphics.h"
 
 #include "audio.h"
+#include <hardware/dma.h>
+#include <hardware/irq.h>
 #include "ff.h"
 #include "psram_spi.h"
 #ifdef KBDUSB
@@ -627,6 +630,57 @@ static int umac_cursor_x = 0;
 static int umac_cursor_y = 0;
 static int umac_cursor_button = 0;
 
+/* ---------------------------------------------------------------------------
+ * Mac 128K/512K sound output
+ *
+ * The Mac hardware reads the sound buffer directly (DMA-like) at ~22 kHz.
+ * ---------------------------------------------------------------------------
+ */
+#define MAC_SOUNDBASE_ADDR1   0x027A
+#define MAC_SOUNDBASE_ADDR2   0x027E
+#define MAC_SOUND_BUF_SAMPLES  370u
+volatile static uint32_t snd_sample_idx = 0;
+static repeating_timer_t m_timer = { 0 };
+
+extern "C" void __not_in_flash_func(v_sync)(void) {
+    snd_sample_idx = 16;
+}
+
+/* Calling ~22255 times per second by timer
+ * Reads the active Mac sound buffer via SoundBase global, scales by volume,
+ * and updates the PWM duty cycle on BEEPER_PIN.
+ */
+static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
+    /* sndres: VIA RB bit 7 -- when 0 the Mac hardware reset the speaker sound generation */
+    if (!(via_get_rb() & 0x80)) {
+//        pwm_set_gpio_level(BEEPER_PIN, 0);
+//        snd_sample_idx = 0;
+        return true;
+    }
+
+    uint8_t ra = via_get_ra();
+    // Apple Macintosh Hardware Memory Map (1983, Twiggy / early Mac docs)
+    // PA3  → /SND PG2   (Sound page select)
+    // active - inverted
+    uint32_t snd_base = (ra & 0b01000) ? RAM_SIZE - 0x0300 : RAM_SIZE - 0x5C00;
+
+    uint32_t idx  = snd_sample_idx++ % MAC_SOUND_BUF_SAMPLES;
+    uint32_t addr = snd_base + idx * 2;
+    uint8_t sample = RAM_RD8(CLAMP_RAM_ADDR(addr));
+
+    /* Volume: VIA RA[2:0] = 0 (mute) .. 7 (full). Scale sample linearly. */
+    // Apple Macintosh Hardware Memory Map (1983)
+    // PA2  → SV2   (Sound Volume bit 2)
+    // PA1  → SV1   (Sound Volume bit 1)
+    // PA0  → SV0   (Sound Volume bit 0)
+//    uint8_t volume = (ra & 0x07);
+//    uint8_t level = sample >> (8 - volume);
+
+    pwm_set_gpio_level(BEEPER_PIN, sample); // level);
+    return true;
+}
+
+
 static void     poll_umac()
 {
         static absolute_time_t last_1hz = 0;
@@ -728,8 +782,6 @@ int main() {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
-///    init_sound();
-///    pcm_setup(SOUND_FREQUENCY, SOUND_FREQUENCY * 2 / 50); // 882 * 2  = 1764
 #ifdef PSRAM
     init_psram();
 #endif
@@ -741,6 +793,17 @@ int main() {
     disc_descr_t discs[DISC_NUM_DRIVES] = {0};
     disc_setup(discs);
     umac_init(umac_ram, (void *)umac_rom, discs);
+
+    /* PWM for Mac sound: updates at ~21.7 kHz */
+    {
+        pwm_config _pwm_cfg = pwm_get_default_config();
+        gpio_set_function(BEEPER_PIN, GPIO_FUNC_PWM);
+        pwm_config_set_clkdiv(&_pwm_cfg, 1.0f);
+        pwm_config_set_wrap(&_pwm_cfg, 0xFF);
+        pwm_init(pwm_gpio_to_slice_num(BEEPER_PIN), &_pwm_cfg, true);
+        pwm_set_gpio_level(BEEPER_PIN, 0);
+    	add_repeating_timer_us(-1000000 / 22255, timer_callback, NULL, &m_timer);
+    }
 
     while (true) {
         poll_umac();

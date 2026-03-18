@@ -47,7 +47,9 @@ static uint graphics_buffer_height = 480;
 const static uint16_t palette16_mask = 0xc0c0;
 static uint32_t color32 = (uint32_t)palette16_mask << 16 | palette16_mask;
 
-void __time_critical_func() dma_handler_VGA() {
+void v_sync(void);
+
+void __time_critical_func(dma_handler_VGA)() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
     static uint32_t frame_number = 0;
     static uint32_t screen_line = 0;
@@ -55,6 +57,7 @@ void __time_critical_func() dma_handler_VGA() {
     screen_line++;
 
     if (screen_line == N_lines_total) {
+        v_sync();
         screen_line = 0;
         frame_number++;
         input_buffer = graphics_buffer;
