@@ -670,6 +670,9 @@ static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
     if (!(via_get_rb() & 0x80)) {
 //        pwm_set_gpio_level(BEEPER_PIN, 0);
 //        snd_sample_idx = 0;
+#ifdef HDMI_DVI
+        hdmi_dvi_push_audio_sample(0, 0);   // keep the HDMI ring fed with silence
+#endif
         return true;
     }
 
@@ -692,6 +695,11 @@ static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
 //    uint8_t level = sample >> (8 - volume);
 
     pwm_set_gpio_level(BEEPER_PIN, sample); // level);
+#ifdef HDMI_DVI
+    // 8-bit unsigned (centered ~128) -> signed 16-bit, mono to both channels.
+    int16_t s16 = (int16_t)(((int)sample - 128) << 8);
+    hdmi_dvi_push_audio_sample(s16, s16);
+#endif
     return true;
 }
 

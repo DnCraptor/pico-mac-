@@ -16,6 +16,7 @@
 #include "dvi_timing.h"
 #include "common_dvi_pin_configs.h"
 #include "tmds_encode.h"
+#include "audio_ring.h"
 #include "hardware/dma.h"
 #include "hardware/structs/bus_ctrl.h"
 #include "pico/sync.h"
@@ -40,6 +41,33 @@ static const uint8_t *s_fb = 0;      // Mac 1bpp framebuffer
 static uint16_t s_w = 0, s_h = 0;    // Mac resolution
 static uint32_t s_line[OUT_W / 32];  // one 800px 1bpp scanline (100 bytes)
 static uint8_t  bit_reverse8[256];   // per-byte MSB<->LSB (encoder is LSB-first)
+
+/* ---- Phase 4: HDMI audio -------------------------------------------------
+ * The Mac sound timer (main.cpp) feeds 8-bit samples at ~22.7 kHz. We upsample
+ * to the fixed HDMI rate (48 kHz) by zero-order hold -- ample for 8-bit Mac
+ * audio -- and push into libdvi's audio ring. Requires the dvi.c back-porch fix
+ * (present in the imported libdvi) so audio islands are sent in 800x600.        */
+#define HDMI_AUDIO_RATE        48000
+#define HDMI_AUDIO_INPUT_RATE  22727   // = 1000000 / 44us, the Mac sound timer rate
+#define HDMI_AUDIO_BUFFER_SIZE 256
+static audio_sample_t hdmi_audio_buffer[HDMI_AUDIO_BUFFER_SIZE];
+static volatile bool  hdmi_audio_ready = false;
+static uint32_t       hdmi_audio_phase = 0;
+
+static inline void hdmi_audio_enqueue(int16_t l, int16_t r) {
+    if (!hdmi_audio_ready || get_write_size(&dvi0.audio_ring, false) == 0) return;
+    audio_sample_t *s = get_write_pointer(&dvi0.audio_ring);
+    s->channels[0] = l; s->channels[1] = r;
+    increase_write_pointer(&dvi0.audio_ring, 1);
+}
+
+void __not_in_flash_func(hdmi_dvi_push_audio_sample)(int16_t left, int16_t right) {
+    hdmi_audio_phase += HDMI_AUDIO_RATE;
+    while (hdmi_audio_phase >= HDMI_AUDIO_INPUT_RATE) {
+        hdmi_audio_phase -= HDMI_AUDIO_INPUT_RATE;
+        hdmi_audio_enqueue(left, right);
+    }
+}
 
 // Defined in libdvi (dvi.c), default 2 (encode 300 lines, line-double to 600).
 // The Mac framebuffer is 342/480 lines tall, which does not fit a 300-line
@@ -92,6 +120,13 @@ void graphics_init(void) {
     dvi0.timing  = &HDMI_DVI_TIMING;
     dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;         // TUNE 2 (from CMake)
     dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
+
+    // Phase 4: HDMI audio. 800x600@60 pixel clock is 40 MHz; N=6144, CTS=40000
+    // give exactly 48 kHz.
+    dvi_audio_sample_buffer_set(&dvi0, hdmi_audio_buffer, HDMI_AUDIO_BUFFER_SIZE);
+    dvi_set_audio_freq(&dvi0, HDMI_AUDIO_RATE, 40000, 6144);
+    hdmi_audio_ready = true;
+
     // Give core1 (which produces scanlines) bus priority so core0 RAM traffic
     // can't starve the TMDS output.
     hw_set_bits(&bus_ctrl_hw->priority, BUSCTRL_BUS_PRIORITY_PROC1_BITS);
