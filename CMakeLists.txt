@@ -49,7 +49,7 @@ else()
     set(UMAC_MEMSIZE_VAL 464)
 endif()
 
-set (PORT_VERSION "0.0.9")
+set (PORT_VERSION "0.1.0")
 
 set(HDMI_DVI ON)
 
@@ -70,15 +70,15 @@ set(FLASH_SIZE_GREEN ON)
 ###set(CPU_MHZ 408)
 set(CPU_MHZ 378)
 # Phase 1: core voltage selectable (lower to reduce heat/stress at cost of max clock)
-set(VREG_VOLTAGE "VREG_VOLTAGE_1_60" CACHE STRING "Core voltage enum, e.g. VREG_VOLTAGE_1_30")
+set(VREG_VOLTAGE "VREG_VOLTAGE_1_50" CACHE STRING "Core voltage enum, e.g. VREG_VOLTAGE_1_30")
 #set(CPU_MHZ 366)
 
 
 
 IF(MURM2)
-    SET(BUILD_NAME "m2p2-${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
+    SET(BUILD_NAME "m2p2-${PROJECT_NAME}-${CPU_MHZ}")
 ELSE()
-    SET(BUILD_NAME "m1p2-${PROJECT_NAME}-${FLASH_SIZE}-${CPU_MHZ}")
+    SET(BUILD_NAME "m1p2-${PROJECT_NAME}-${CPU_MHZ}")
 ENDIF()
 
 set(CMAKE_C_STANDARD 11)

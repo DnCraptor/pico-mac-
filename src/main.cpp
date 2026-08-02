@@ -680,7 +680,12 @@ static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
     // Apple Macintosh Hardware Memory Map (1983, Twiggy / early Mac docs)
     // PA3  → /SND PG2   (Sound page select)
     // active - inverted
-    uint32_t snd_base = (ra & 0b01000) ? RAM_SIZE - 0x0300 : RAM_SIZE - 0x5C00;
+    // Sound buffers (Inside Macintosh, top-of-RAM relative):
+    //   main = MemTop - 0x0300, alternate = MemTop - 0x5F00.
+    // (The snd-branch used 0x5C00, the main<->alt distance, as a top offset,
+    //  which is 0x300 too high and read past the alternate buffer -> silence
+    //  whenever the app page-flipped to the alt buffer via PA3.)
+    uint32_t snd_base = (ra & 0b01000) ? RAM_SIZE - 0x0300 : RAM_SIZE - 0x5F00;
 
     uint32_t idx  = snd_sample_idx++ % MAC_SOUND_BUF_SAMPLES;
     uint32_t addr = snd_base + idx * 2;

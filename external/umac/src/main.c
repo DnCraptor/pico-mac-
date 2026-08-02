@@ -77,8 +77,7 @@ static jmp_buf main_loop_jb;
 
 static int disassemble = 0;
 
-//#define UMAC_EXECLOOP_QUANTUM   46
-#define UMAC_EXECLOOP_QUANTUM   5000
+#define UMAC_EXECLOOP_QUANTUM   46
 
 /* Keyboard response must not come too soon after the command is received.
  * With the smaller quantum we express this as a number of quanta rather
