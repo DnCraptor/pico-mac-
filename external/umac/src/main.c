@@ -77,7 +77,8 @@ static jmp_buf main_loop_jb;
 
 static int disassemble = 0;
 
-#define UMAC_EXECLOOP_QUANTUM   46
+//#define UMAC_EXECLOOP_QUANTUM   46
+#define UMAC_EXECLOOP_QUANTUM   5000
 
 /* Keyboard response must not come too soon after the command is received.
  * With the smaller quantum we express this as a number of quanta rather
@@ -721,5 +722,19 @@ int     umac_loop()
         kbd_check_work();
 
 	return sim_done;
+}
+
+/* Phase 0 benchmark support: expose accumulated emulated time and the
+ * execution quantum so the platform layer can measure emulation throughput
+ * without knowing internal timing constants.
+ */
+uint64_t umac_get_global_time_us(void)
+{
+        return global_time_us;
+}
+
+int umac_get_execloop_quantum(void)
+{
+        return UMAC_EXECLOOP_QUANTUM;
 }
 

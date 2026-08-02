@@ -27,6 +27,7 @@
  */
 
 #include <stdio.h>
+#include "hardware/sync.h"   /* __dmb() */
 #include "kbd.h"
 
 #include "class/hid/hid.h"
@@ -36,8 +37,11 @@
 #define KQ_MASK         (KQ_SIZE-1)
 
 static uint16_t kbd_queue[KQ_SIZE];
-static unsigned int kbd_queue_prod = 0;
-static unsigned int kbd_queue_cons = 0;
+/* Single-producer (core1: USB/PS2/NES) / single-consumer (core0: poll_umac).
+ * Indices are volatile and paired with __dmb() so the consumer never observes
+ * an advanced producer index before the data write it refers to. */
+static volatile unsigned int kbd_queue_prod = 0;
+static volatile unsigned int kbd_queue_cons = 0;
 
 static bool     kbd_queue_full()
 {
@@ -55,6 +59,7 @@ uint16_t        kbd_queue_pop()
 {
         if (kbd_queue_empty())
                 return 0;
+        __dmb();                    /* order: observe prod, then read data */
         uint16_t v = kbd_queue[kbd_queue_cons];
         kbd_queue_cons = (kbd_queue_cons + 1) & KQ_MASK;
         return v;
@@ -194,6 +199,7 @@ bool            kbd_queue_push(uint8_t hid_keycode, bool pressed)
                 return false;
 
         kbd_queue[kbd_queue_prod] = v;
+        __dmb();                    /* order: write data, then publish index */
         kbd_queue_prod = (kbd_queue_prod + 1) & KQ_MASK;
         return true;
 }

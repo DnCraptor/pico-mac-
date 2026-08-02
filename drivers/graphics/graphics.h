@@ -21,6 +21,17 @@ extern "C" {
 #ifdef SOFTTV
 #include "tv-software.h"
 #endif
+
+// Video backends (vga/tv/hdmi/tft) define the text-grid dimensions used by
+// the draw_text/draw_window prototypes below. The 1bpp HDMI-DVI backend has
+// no text overlay, so provide a fallback when no backend defined them.
+#ifndef TEXTMODE_COLS
+#define TEXTMODE_COLS 100
+#endif
+#ifndef TEXTMODE_ROWS
+#define TEXTMODE_ROWS 37
+#endif
+
 #include "font6x8.h"
 #include "font8x8.h"
 #include "font8x16.h"
@@ -30,6 +41,12 @@ enum graphics_mode_t {
 };
 
 void graphics_init();
+
+/* Phase 2: system-clock contract. A backend whose pixel/bit clock is tied to
+ * the system clock (HDMI-DVI, RGB-TV) dictates the clock; VGA tolerates any
+ * clock (its pixel divider is derived from clk_sys). */
+const uint32_t* graphics_get_supported_system_clocks(uint32_t* count);
+bool graphics_system_clock_can_change(void);
 
 void graphics_set_mode(enum graphics_mode_t mode);
 

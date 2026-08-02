@@ -32,6 +32,11 @@
 int     umac_init(void *_ram_base, void *_rom_base, disc_descr_t discs[DISC_NUM_DRIVES]);
 int     umac_loop();
 void    umac_reset();
+
+/* Phase 0 benchmark helpers (see docs/PHASE0.md) */
+uint64_t umac_get_global_time_us(void);
+int      umac_get_execloop_quantum(void);
+
 void    umac_opt_disassemble(int enable);
 void    umac_mouse(int deltax, int deltay, int button);
 void    umac_kbd_event(uint8_t scancode, int down);

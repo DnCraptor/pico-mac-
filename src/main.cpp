@@ -18,6 +18,9 @@
 #include <hardware/pwm.h>
 
 #include "graphics.h"
+#ifdef HDMI_DVI
+#include "hdmi-dvi.h"
+#endif
 
 #include "audio.h"
 #include <hardware/dma.h>
@@ -38,15 +41,20 @@
 
 #define HOME_DIR (char*)"\\mac+"
 
+/* Phase 1: core voltage is selectable via CMake (default 1.60V). */
+#ifndef VREG_VOLTAGE_SEL
+#define VREG_VOLTAGE_SEL VREG_VOLTAGE_1_60
+#endif
+
 extern "C" {
 #include "disc.h"
 #include "umac.h"
 #include "kbd.h"
 }
 
-extern int cursor_x;
-extern int cursor_y;
-extern int cursor_button;
+extern volatile int cursor_x;
+extern volatile int cursor_y;
+extern volatile int cursor_button;
 
 // Mac binary data:  disc and ROM images
 static const uint8_t __in_flash() __aligned(4096) umac_disc[400 << 10] = {
@@ -514,6 +522,13 @@ void __scratch_x("render") render_core() {
     graphics_set_flashmode(false, false);
     sem_acquire_blocking(&vga_start_semaphore);
 
+#ifdef HDMI_DVI
+    /* Phase 3b: dedicate core1 to DVI scanline generation; never returns.
+     * Input (PS/2, NES, USB) does not run in this mode yet -- moving it to
+     * core0 is Phase 3c. This first cut is for verifying HDMI video output. */
+    hdmi_dvi_loop();
+#endif
+
     uint32_t tickKbdRep1 = time_us_32();
     // 40 FPS loop
 #define frame_tick (25000)
@@ -542,7 +557,7 @@ void __scratch_x("render") render_core() {
         }
 
 #ifdef KBDUSB
-        tuh_task();
+        tuh_task();   /* drains USB events; IRQ itself is on core0 (see main) */
 #endif
         tight_loop_contents();
     }
@@ -687,6 +702,31 @@ static void     poll_umac()
         static absolute_time_t last_vsync = 0;
         absolute_time_t now = get_absolute_time();
 
+#ifdef HDMI_DVI
+        /* Phase 3c: in HDMI-DVI mode core1 is fully dedicated to TMDS generation
+         * (hdmi_dvi_loop() never returns), so input is serviced here on core0.
+         * The USB host IRQ is already on core0 (Phase 1b), so tuh_task() belongs
+         * here too. Same cadence as the VGA render_core loop: USB ~1 kHz, PS/2 +
+         * NES ~40 Hz. In VGA builds this block is compiled out and input stays on
+         * core1 as before. */
+        {
+                static absolute_time_t last_usb = 0, last_in = 0;
+#ifdef KBDUSB
+                if (absolute_time_diff_us(last_usb, now) >= 1000) { tuh_task(); last_usb = now; }
+#endif
+                if (absolute_time_diff_us(last_in, now) >= 25000) {
+#ifdef KBDUSB
+                        ps2kbd.tick();
+#endif
+#ifdef USE_NESPAD
+                        nespad_tick1();
+                        nespad_tick2();
+#endif
+                        last_in = now;
+                }
+        }
+#endif
+
         umac_loop();
 
         int64_t p_1hz = absolute_time_diff_us(last_1hz, now);
@@ -748,18 +788,157 @@ void __not_in_flash() flash_timings() {
 }
 #endif
 
+#ifdef BENCH_EMU
+/* Phase 0: on-screen emulation-speed HUD (no UART; UART pins are unavailable).
+ *
+ * global_time_us advances by exactly one UMAC_EXECLOOP_QUANTUM per umac_loop()
+ * regardless of how long that loop really took, so the ratio of emulated time
+ * to wall-clock time is a direct measure of headroom:
+ *   speed = 1.000 -> exactly real time (a real 7.8336 MHz 68000)
+ *   speed > 1     -> emulator has spare capacity
+ *   speed < 1     -> emulator runs slower than a real Mac
+ * Effective m68k clock = 7.8336 MHz * speed.
+ *
+ * The readout is blitted straight into the 1bpp Mac framebuffer as a small HUD
+ * in the top-left corner (white text on a black box). Framebuffer polarity:
+ * bit=1 -> black, MSB = leftmost pixel (see drivers/vga-nextgen/vga.c).
+ *
+ * HUD legend (two lines):
+ *   S x.xxx  Q<quantum> C<sysclk>   speed multiple, quantum(us), CPU MHz
+ *   M xx.x                          effective m68k MHz
+ */
+static const uint8_t bench_font[17][8] = {
+    {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // ' '
+    {0x00,0x00,0x00,0x00,0x00,0x60,0x60,0x00}, // '.'
+    {0x70,0x88,0x98,0xA8,0xC8,0x88,0x70,0x00}, // '0'
+    {0x20,0x60,0x20,0x20,0x20,0x20,0x70,0x00}, // '1'
+    {0x70,0x88,0x08,0x10,0x20,0x40,0xF8,0x00}, // '2'
+    {0xF0,0x08,0x10,0x30,0x08,0x88,0x70,0x00}, // '3'
+    {0x10,0x30,0x50,0x90,0xF8,0x10,0x10,0x00}, // '4'
+    {0xF8,0x80,0xF0,0x08,0x08,0x88,0x70,0x00}, // '5'
+    {0x30,0x40,0x80,0xF0,0x88,0x88,0x70,0x00}, // '6'
+    {0xF8,0x08,0x10,0x20,0x40,0x40,0x40,0x00}, // '7'
+    {0x70,0x88,0x88,0x70,0x88,0x88,0x70,0x00}, // '8'
+    {0x70,0x88,0x88,0x78,0x08,0x10,0x60,0x00}, // '9'
+    {0x78,0x80,0x80,0x70,0x08,0x08,0xF0,0x00}, // 'S'
+    {0x88,0xD8,0xA8,0xA8,0x88,0x88,0x88,0x00}, // 'M'
+    {0x70,0x88,0x88,0x88,0xA8,0x90,0x68,0x00}, // 'Q'
+    {0x70,0x88,0x80,0x80,0x80,0x88,0x70,0x00}, // 'C'
+    {0x88,0x50,0x20,0x50,0x88,0x88,0x88,0x00}, // 'X'
+};
+static int bench_glyph_index(char c) {
+    switch (c) {
+        case '.': return 1;
+        case '0': return 2;  case '1': return 3;  case '2': return 4;
+        case '3': return 5;  case '4': return 6;  case '5': return 7;
+        case '6': return 8;  case '7': return 9;  case '8': return 10;
+        case '9': return 11; case 'S': return 12; case 'M': return 13;
+        case 'Q': return 14; case 'C': return 15; case 'X': return 16;
+        default:  return 0;  /* space */
+    }
+}
+static inline void bench_setpx(uint8_t *fb, int stride, int x, int y, bool white) {
+    uint8_t *b = &fb[(size_t)y * stride + (x >> 3)];
+    uint8_t m = 0x80 >> (x & 7);
+    if (white) *b &= ~m; else *b |= m;   /* white=0(clear), black=1(set) */
+}
+static void bench_fillbox(uint8_t *fb, int stride, int x0, int y0, int x1, int y1) {
+    for (int y = y0; y < y1; ++y)
+        for (int x = x0; x < x1; ++x)
+            bench_setpx(fb, stride, x, y, false); /* black */
+}
+static void bench_puts(uint8_t *fb, int stride, int px, int py, const char *s) {
+    for (; *s; ++s, px += 6) {
+        const uint8_t *g = bench_font[bench_glyph_index(*s)];
+        for (int row = 0; row < 8; ++row) {
+            uint8_t bits = g[row];
+            for (int col = 0; col < 6; ++col)
+                if (bits & (0x80 >> col))
+                    bench_setpx(fb, stride, px + col, py + row, true); /* white ink */
+        }
+    }
+}
+static char *bench_u2s(char *p, unsigned v) {
+    char t[10]; int n = 0;
+    if (!v) { *p++ = '0'; return p; }
+    while (v) { t[n++] = (char)('0' + v % 10); v /= 10; }
+    while (n) *p++ = t[--n];
+    return p;
+}
+static void bench_frame(uint8_t *fb, int stride, int w, int h) {
+    for (int x = 0; x < w; ++x) { bench_setpx(fb, stride, x, 0, false); bench_setpx(fb, stride, x, h - 1, false); }
+    for (int y = 0; y < h; ++y) { bench_setpx(fb, stride, 0, y, false); bench_setpx(fb, stride, w - 1, y, false); }
+}
+static void bench_draw(uint8_t *fb, int stride, const char *l1, const char *l2) {
+    bench_frame(fb, stride, DISP_WIDTH, DISP_HEIGHT);
+    bench_fillbox(fb, stride, 0, 0, 132, 21);
+    bench_puts(fb, stride, 2, 2,  l1);
+    bench_puts(fb, stride, 2, 12, l2);
+}
+static void bench_run()
+{
+    const uint64_t MAC_HZ = 7833600ULL; /* 68000 nominal clock */
+    uint8_t *fb = umac_ram + umac_get_fb_offset();
+    const int stride = DISP_WIDTH / 8;
+    uint64_t last_real = time_us_64();
+    uint64_t last_emu  = umac_get_global_time_us();
+    uint64_t last_draw = 0;
+    char line1[40] = "S----";
+    char line2[24] = "M----";
+    bench_draw(fb, stride, line1, line2);   /* show HUD within the first frame */
+    while (true) {
+        poll_umac();
+        uint64_t now = time_us_64();
+        if (now - last_real >= 1000000ULL) {
+            uint64_t d_emu  = umac_get_global_time_us() - last_emu;
+            uint64_t d_real = now - last_real;
+            unsigned sm = (unsigned)((d_emu * 1000ULL) / d_real);          /* speed x1000 */
+            unsigned mt = (unsigned)(((MAC_HZ * d_emu) / d_real) / 100000ULL); /* MHz x10 */
+            char *p = line1;
+            *p++ = 'S'; p = bench_u2s(p, sm / 1000); *p++ = '.';
+            unsigned f = sm % 1000;
+            *p++ = (char)('0' + f / 100); *p++ = (char)('0' + (f / 10) % 10); *p++ = (char)('0' + f % 10);
+            *p++ = 'X'; *p++ = ' ';
+            *p++ = 'Q'; p = bench_u2s(p, (unsigned)umac_get_execloop_quantum()); *p++ = ' ';
+            *p++ = 'C'; p = bench_u2s(p, (unsigned)CPU_MHZ); *p = 0;
+            char *q = line2;
+            *q++ = 'M'; q = bench_u2s(q, mt / 10); *q++ = '.'; *q++ = (char)('0' + mt % 10); *q = 0;
+            last_real = now; last_emu += d_emu;
+        }
+        if (now - last_draw >= 33000ULL) {   /* ~30 Hz redraw keeps HUD visible */
+            bench_draw(fb, stride, line1, line2);
+            last_draw = now;
+        }
+    }
+}
+#endif
+
 int main() {
 #if !PICO_RP2040
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_60);
+    vreg_set_voltage(VREG_VOLTAGE_SEL);
     flash_timings();
 #else
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
 #endif
     sleep_ms(100);
-    set_sys_clock_khz(CPU_MHZ * KHZ, true);
+    /* Phase 2: the video backend may require a specific system clock (e.g.
+     * HDMI-DVI needs 400 MHz for its TMDS bit clock). VGA can run at any clock,
+     * so it honours CPU_MHZ. */
+    {
+        uint32_t nclk = 0;
+        const uint32_t *clks = graphics_get_supported_system_clocks(&nclk);
+        uint32_t target_mhz = (graphics_system_clock_can_change() || nclk == 0)
+                                  ? (uint32_t)CPU_MHZ
+                                  : clks[0];
+        set_sys_clock_khz(target_mhz * KHZ, true);
+    }
 
 #ifdef KBDUSB
+    /* USB host is initialised on core0 so its IRQ does NOT run on core1, which
+     * generates the time-critical VGA signal (a USB IRQ there tears sync).
+     * tuh_task() runs on core1; consolidating both onto one core is a Phase 1b
+     * task (input-driver reconciliation with the Vector reference). */
     tuh_init(BOARD_TUH_RHPORT);
     ps2kbd.init_gpio();
 #else
@@ -805,8 +984,12 @@ int main() {
     	add_repeating_timer_us(-1000000 / 22255, timer_callback, NULL, &m_timer);
     }
 
+#ifdef BENCH_EMU
+    bench_run();   /* never returns */
+#else
     while (true) {
         poll_umac();
     }
+#endif
     __unreachable();
 }

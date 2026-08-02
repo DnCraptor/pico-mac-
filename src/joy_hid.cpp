@@ -14,9 +14,9 @@ struct input_bits_t {
 };
 
 extern input_bits_t gamepad1_bits;
-extern int cursor_x;
-extern int cursor_y;
-extern int cursor_button;
+extern volatile int cursor_x;
+extern volatile int cursor_y;
+extern volatile int cursor_button;
 
 //Since https://github.com/hathach/tinyusb/pull/2222, we can add in custom vendor drivers easily
 usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count) {

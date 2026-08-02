@@ -13,7 +13,12 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 cmake_minimum_required(VERSION 3.13)
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+# Board selection via the standard pico-sdk mechanism (Phase 2b). The board
+# header in boards/<PICO_BOARD>.h supplies all pins and includes the base
+# chip header (pico2.h / pico.h).
+set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
+set(PICO_BOARD murmulator CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
+list(APPEND PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
 include(pico_sdk_import.cmake)
 
 project(pico-mac C CXX ASM)
@@ -27,7 +32,26 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-set (PORT_VERSION "0.0.8")
+# BENCH_EMU:    build an instrumented image that reports emulation speed over
+#               UART once per second (see docs/PHASE0.md). PS/2 keyboard is
+#               unavailable in this build (UART reuses GP0/GP1); USB HID works.
+# DEV_SMALL_RAM: develop against a small Mac RAM so headroom is not a concern.
+#               ON  -> 208 KB (uses the shipped umac-rom-208-vga.h).
+#               OFF -> 464 KB (release-sized, uses umac-rom-464-vga.h).
+#               128 KB is the true stock size but needs a generated
+#               umac-rom-128-vga.h (not shipped); see docs/PHASE0.md.
+option(BENCH_EMU "Enable on-screen emulation-speed benchmark HUD" OFF)
+option(DEV_SMALL_RAM "Use small (208K) Mac RAM for development" ON)
+
+if(DEV_SMALL_RAM)
+    set(UMAC_MEMSIZE_VAL 208)
+else()
+    set(UMAC_MEMSIZE_VAL 464)
+endif()
+
+set (PORT_VERSION "0.0.9")
+
+set(HDMI_DVI ON)
 
 #set(I2S ON)
 ###set(TV ON)
@@ -45,6 +69,8 @@ set(FLASH_SIZE 2048)
 set(FLASH_SIZE_GREEN ON)
 ###set(CPU_MHZ 408)
 set(CPU_MHZ 378)
+# Phase 1: core voltage selectable (lower to reduce heat/stress at cost of max clock)
+set(VREG_VOLTAGE "VREG_VOLTAGE_1_60" CACHE STRING "Core voltage enum, e.g. VREG_VOLTAGE_1_30")
 #set(CPU_MHZ 366)
 
 
@@ -76,6 +102,11 @@ add_subdirectory(drivers/sdcard)
 add_subdirectory(drivers/vga-nextgen)
 add_subdirectory(drivers/st7789)
 add_subdirectory(drivers/hdmi)
+# Phase 3a: PicoDVI engine (libdvi) imported from emu80@760330a. INTERFACE
+# library: nothing is compiled until a target links it. The Mac 1bpp HDMI-DVI
+# driver that uses it (and links it) is added in Phase 3b.
+add_subdirectory(drivers/libdvi)
+add_subdirectory(drivers/hdmi-dvi)
 add_subdirectory(drivers/tv)
 add_subdirectory(drivers/tv-software)
 add_subdirectory(drivers/graphics)
@@ -147,10 +178,28 @@ ELSEIF(SOFTTV)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE SOFTTV)
 	target_link_libraries(${PROJECT_NAME} PRIVATE tv-software)
 	SET(BUILD_NAME "${BUILD_NAME}-TV-SOFT-${PORT_VERSION}")
+ELSEIF(HDMI_DVI)
+    # Phase 3b: Mac 1bpp HDMI/DVI via libdvi. 800x600@60 -> TMDS bit = sysclk =
+    # 400 MHz (the Phase 2 clock contract already forces this at runtime).
+    IF(PICO_BOARD STREQUAL "murmulator2")
+        SET(DVI_PIN_CFG murmulator2_cfg)
+    ELSE()
+        SET(DVI_PIN_CFG murmulator_cfg)
+    ENDIF()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        HDMI_DVI DVI_MONOCHROME_TMDS=1 DVI_DEFAULT_SERIAL_CONFIG=${DVI_PIN_CFG})
+    target_link_libraries(${PROJECT_NAME} PRIVATE libdvi hdmi-dvi)
+    SET(CPU_MHZ 400)
+    string(REGEX REPLACE "-[0-9]+$" "-${CPU_MHZ}" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name
+    SET(BUILD_NAME "${BUILD_NAME}-HDMI-DVI-${PORT_VERSION}")
 ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA_DRV)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
     SET(BUILD_NAME "${BUILD_NAME}-VGA-${PORT_VERSION}")
+ENDIF()
+
+IF(BENCH_EMU)
+    SET(BUILD_NAME "${BUILD_NAME}-BENCH")
 ENDIF()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
@@ -195,51 +244,7 @@ IF(MURM2)
         PORT_VERSION="${PORT_VERSION}"
         CPU_MHZ=${CPU_MHZ}
 
-        KBD_CLOCK_PIN=2
-        KBD_DATA_PIN=3
-
-        LOAD_WAV_PIO=22
-
-        BEEPER_PIN=9
-        PWM_PIN0=10
-        PWM_PIN1=11
-        SOUND_FREQUENCY=50000
-
-        # SDCARD
-        SDCARD_PIN_SPI0_CS=5
-        SDCARD_PIN_SPI0_SCK=6
-        SDCARD_PIN_SPI0_MOSI=7
-        SDCARD_PIN_SPI0_MISO=4
-
-        #PSRAM
-        # PSRAM_MUTEX=1
-        PSRAM_SPINLOCK=1
-        PSRAM_ASYNC=1
-
-        PSRAM_PIN_CS=8
-        PSRAM_PIN_SCK=6
-        PSRAM_PIN_MOSI=7
-        PSRAM_PIN_MISO=4
-
-        # NES Gamepad
-        USE_NESPAD
-        NES_GPIO_CLK=20
-        NES_GPIO_LAT=21
-        NES_GPIO_DATA=26
-
-        # VGA 8 pins starts from pin:
-        VGA_BASE_PIN=12
-
-        # HDMI 8 pins starts from pin:
-        HDMI_BASE_PIN=12
-
-        # TFT
-        TFT_CS_PIN=12
-        TFT_RST_PIN=14
-        TFT_LED_PIN=15
-        TFT_DC_PIN=16
-        TFT_DATA_PIN=18
-        TFT_CLK_PIN=19
+        # --- pins provided by boards/${PICO_BOARD}.h (Phase 2b) ---
         
         PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
         DEFAULT_THROTTLING=0
@@ -249,57 +254,7 @@ ELSE()
         PORT_VERSION="${PORT_VERSION}"
         CPU_MHZ=${CPU_MHZ}
 
-        KBD_CLOCK_PIN=0
-        KBD_DATA_PIN=1
-
-        LOAD_WAV_PIO=22
-        PWM_PIN0=26
-        PWM_PIN1=27
-        BEEPER_PIN=28
-        SOUND_FREQUENCY=50000
-        I2S_FREQUENCY=96000
-
-        # SDCARD
-        SDCARD_PIN_SPI0_CS=5
-        SDCARD_PIN_SPI0_SCK=2
-        SDCARD_PIN_SPI0_MOSI=3
-        SDCARD_PIN_SPI0_MISO=4
-        
-        #PSRAM
-        # PSRAM_MUTEX=1
-        PSRAM_SPINLOCK=1
-        PSRAM_ASYNC=1
-
-        PSRAM_PIN_CS=18
-        PSRAM_PIN_SCK=19
-        PSRAM_PIN_MOSI=20
-        PSRAM_PIN_MISO=21
-
-#        PSRAM_PIN_CS=17
-#        PSRAM_PIN_SCK=18
-#        PSRAM_PIN_MOSI=19
-#        PSRAM_PIN_MISO=16
-
-        # NES Gamepad
-        USE_NESPAD
-        NES_GPIO_CLK=14
-        NES_GPIO_LAT=15
-        NES_GPIO_DATA=16
-    #    NES_GPIO_DATA=28 - instead of BEEPER_PIN
-
-        # VGA 8 pins starts from pin:
-        VGA_BASE_PIN=6
-
-        # HDMI 8 pins starts from pin:
-        HDMI_BASE_PIN=6
-
-        # TFT
-        TFT_CS_PIN=6
-        TFT_RST_PIN=8
-        TFT_LED_PIN=9
-        TFT_DC_PIN=10
-        TFT_DATA_PIN=12
-        TFT_CLK_PIN=13
+        # --- pins provided by boards/${PICO_BOARD}.h (Phase 2b) ---
 
         PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
         DEFAULT_THROTTLING=0
@@ -308,15 +263,26 @@ ELSE()
  #       DISP_WIDTH=512
 #        DISP_HEIGHT=342
 #        UMAC_MEMSIZE=208
-        UMAC_MEMSIZE=464
-        USE_VGA_RES=1
-        DISP_WIDTH=640
-        DISP_HEIGHT=480
+        UMAC_MEMSIZE=${UMAC_MEMSIZE_VAL}
+        # Debug on the Mac's native 512x342 (uses umac-rom-*-orig.h). The 640x480
+        # mode is not fully supported by Mac software; native res avoids confusing
+        # emulator bugs with incomplete non-standard-resolution support.
+        USE_VGA_RES=0
+        DISP_WIDTH=512
+        DISP_HEIGHT=342
         #DISP_WIDTH=320
         #DISP_HEIGHT=240
        MUSASHI_CNF="../external/umac/include/m68kconf.h"
     )
 ENDIF()
+
+IF(BENCH_EMU)
+    # On-screen benchmark HUD (drawn into the Mac framebuffer); no UART/stdio.
+    target_compile_definitions(${PROJECT_NAME} PRIVATE BENCH_EMU)
+ENDIF()
+
+# Phase 1: propagate selectable core voltage to the firmware.
+target_compile_definitions(${PROJECT_NAME} PRIVATE VREG_VOLTAGE_SEL=${VREG_VOLTAGE})
 
 #pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections)

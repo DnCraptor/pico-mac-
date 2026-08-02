@@ -195,9 +195,9 @@ void cursor_movement(int8_t x, int8_t y, int8_t wheel)
 #endif
 }
 
-int cursor_x = 0;
-int cursor_y = 0;
-int cursor_button = 0;
+volatile int cursor_x = 0;
+volatile int cursor_y = 0;
+volatile int cursor_button = 0;
 
 static void process_mouse_report(hid_mouse_report_t const * report)
 {

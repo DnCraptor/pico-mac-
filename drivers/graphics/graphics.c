@@ -1,5 +1,26 @@
 #include "graphics.h"
 #include <string.h>
+
+/* Phase 2: system-clock contract (see graphics.h). */
+const uint32_t* graphics_get_supported_system_clocks(uint32_t* count) {
+#ifdef HDMI_DVI
+    static const uint32_t clocks[] = { 400 };            /* 800x600@60: TMDS bit = sysclk */
+#elif defined(PICO_RP2040)
+    static const uint32_t clocks[] = { 378, 400, 408 };
+#else
+    static const uint32_t clocks[] = { 378, 400, 440, 480 };
+#endif
+    if (count) *count = sizeof(clocks) / sizeof(clocks[0]);
+    return clocks;
+}
+
+bool graphics_system_clock_can_change(void) {
+#if defined(HDMI_DVI) || defined(RGB_TV)
+    return false;   /* pixel/bit clock is tied to the system clock */
+#else
+    return true;    /* VGA derives its pixel clock from clk_sys */
+#endif
+}
 /**
 void draw_text(const char string[TEXTMODE_COLS + 1], uint32_t x, uint32_t y, uint8_t color, uint8_t bgcolor) {
 if (!text_buffer) return;

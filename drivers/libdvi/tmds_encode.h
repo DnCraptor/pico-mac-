@@ -1,0 +1,91 @@
+#ifndef _TMDS_ENCODE_H_
+#define _TMDS_ENCODE_H_
+
+#include "hardware/interp.h"
+#include "dvi_config_defs.h"
+
+// Functions from tmds_encode.c
+void tmds_encode_data_channel_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
+void tmds_encode_data_channel_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
+void tmds_encode_data_channel_fullres_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint channel_msb, uint channel_lsb);
+void tmds_setup_palette_symbols(const uint16_t *palette, uint32_t *symbuf, size_t n_palette);
+void tmds_setup_palette24_symbols(const uint32_t *palette, uint32_t *symbuf, size_t n_palette);
+void tmds_encode_palette_data(const uint32_t *pixbuf, const uint32_t *tmds_palette, uint32_t *symbuf, size_t n_pix, uint32_t palette_bits);
+
+// Encode a horizontal span directly into an already initialized full-width
+// TMDS buffer. x and n_pix must be even; full_width is the complete scanline
+// width. Pixels outside the span are left untouched.
+void tmds_encode_palette_data_span(const uint32_t *pixbuf,
+                                   const uint32_t *tmds_palette,
+                                   uint32_t *symbuf,
+                                   size_t full_width,
+                                   size_t x,
+                                   size_t n_pix,
+                                   uint32_t palette_bits);
+
+// Functions from tmds_encode.S
+
+void tmds_encode_1bpp_bk_720(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t n_pix);
+void tmds_encode_1bpp_bk_800(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t n_pix);
+void tmds_encode_1bpp_bk_1024(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t n_pix);
+
+void tmds_encode_2bpp_bk_720(const uint32_t *pixbuf, uint32_t *symbuf, uint64_t* tmds_2bpp_table);
+void tmds_encode_2bpp_bk_800(const uint32_t *pixbuf, uint32_t *symbuf, uint64_t* tmds_2bpp_table);
+void tmds_encode_2bpp_bk_1024(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t* tmds_2bpp_table);
+
+void tmds_encode_64c_b_90(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_g_90(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_r_90(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+
+void tmds_encode_64c_b_100(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_g_100(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_r_100(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+
+void tmds_encode_64c_b_128(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_g_128(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_r_128(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+
+void tmds_encode_64c_b_64(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_g_64(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+void tmds_encode_64c_r_64(const uint8_t *textbuf, uint32_t *symbuf, uint32_t glyph_line);
+
+void tmds_encode_1bpp(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t n_pix);
+void tmds_encode_2bpp(const uint32_t *pixbuf, uint32_t *symbuf, uint32_t n_pix);
+
+// Uses interp0:
+void tmds_encode_loop_16bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_loop_16bpp_leftshift(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint leftshift);
+
+// Uses interp0 and interp1:
+void tmds_encode_loop_8bpp(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_loop_8bpp_leftshift(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint leftshift);
+
+// Uses interp0 and interp1:
+// (Note a copy is provided in scratch memories X and Y)
+void tmds_fullres_encode_loop_16bpp_x(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_fullres_encode_loop_16bpp_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_fullres_encode_loop_16bpp_leftshift_x(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint leftshift);
+void tmds_fullres_encode_loop_16bpp_leftshift_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix, uint leftshift);
+void tmds_palette_encode_loop_x(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_palette_encode_loop_y(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+
+#if !PICO_RP2040
+// Crank the SIO TMDS encoder:
+void tmds_encode_sio_loop_poppop_ratio1(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio2(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio4(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio8(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio16(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio32(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_poppop_ratio64(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+
+void tmds_encode_sio_loop_peekpop_ratio1(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio2(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio4(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio8(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio16(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio32(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+void tmds_encode_sio_loop_peekpop_ratio64(const uint32_t *pixbuf, uint32_t *symbuf, size_t n_pix);
+#endif
+
+#endif
