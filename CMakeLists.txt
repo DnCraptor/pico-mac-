@@ -40,7 +40,7 @@ option(SOFTTV "Enable TV soft composite output" OFF)
 #               OFF -> 464 KB (release-sized, uses umac-rom-464-vga.h).
 #               128 KB is the true stock size but needs a generated
 #               umac-rom-128-vga.h (not shipped); see docs/PHASE0.md.
-option(BENCH_EMU "Enable on-screen emulation-speed benchmark HUD" OFF)
+option(BENCH_EMU "Enable on-screen emulation-speed benchmark HUD" ON)
 option(DEV_SMALL_RAM "Use small (208K) Mac RAM for development" ON)
 
 if(DEV_SMALL_RAM)

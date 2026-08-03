@@ -111,6 +111,7 @@ static uint8_t irq_enable = 0;
 static int      t1_armed        = 0;   /* non-zero when T1 is running        */
 static uint64_t t1_period_us    = 0;   /* period in µs, computed from latch  */
 static uint64_t t1_last_fire_us = 0;   /* absolute time of last T1 IRQ (µs)  */
+static uint8_t  t1_pb7          = 1;   /* effective PB7 timer output          */
 
 /* Recompute t1_period_us from the current latch registers. */
 static void via_t1_recalc(void)
@@ -135,6 +136,7 @@ void    via_init(struct via_cb *cb)
         t1_armed        = 0;
         t1_period_us    = 0;
         t1_last_fire_us = 0;
+        t1_pb7          = 1;
         if (cb)
                 via_callbacks = *cb;
 }
@@ -282,6 +284,10 @@ void    via_write(unsigned int address, uint8_t data)
                 irq_active &= ~VIA_IRQ_T1;                /* clear flag  */
                 via_t1_recalc();
                 t1_armed = 1;
+                /* Loading T1 drives PB7 low when timer output is enabled. */
+                if ((via_regs[VIA_DDRB] & 0x80) &&
+                    (via_regs[VIA_ACR] & 0x80))
+                        t1_pb7 = 0;
                 /* t1_last_fire_us stays as-is; via_tick will set it on
                  * the first call after arming if it is still 0.        */
                 VDBG("[VIA: T1 armed, period=%llu us]\n",
@@ -330,11 +336,23 @@ static uint8_t via_read_rega()
         return (ddr & via_regs[VIA_RA]) | (~ddr & data);
 }
 
-static uint8_t via_read_regb()
+static uint8_t via_effective_rb(void)
 {
         uint8_t data = (via_callbacks.rb_in) ? via_callbacks.rb_in() : 0;
         uint8_t ddr = via_regs[VIA_DDRB];
-        return (ddr & via_regs[VIA_RB]) | (~ddr & data);
+        uint8_t value = (ddr & via_regs[VIA_RB]) | (~ddr & data);
+
+        /* When both DDRB7 and ACR7 are set, Timer 1 owns the physical PB7
+         * pin. ORB7 no longer represents the sound waveform. */
+        if ((ddr & 0x80) && (via_regs[VIA_ACR] & 0x80))
+                value = (value & 0x7f) | (t1_pb7 ? 0x80 : 0);
+
+        return value;
+}
+
+static uint8_t via_read_regb()
+{
+        return via_effective_rb();
 }
 
 uint8_t via_read(unsigned int address)
@@ -401,6 +419,14 @@ void    via_tick(uint64_t time_us)
 
                 irq_active |= VIA_IRQ_T1;
 
+                if ((via_regs[VIA_DDRB] & 0x80) &&
+                    (via_regs[VIA_ACR] & 0x80)) {
+                        if (via_regs[VIA_ACR] & 0x40)
+                                t1_pb7 ^= 1;  /* free-run square wave */
+                        else
+                                t1_pb7 = 1;   /* one-shot pulse ends */
+                }
+
                 /* One-shot mode (ACR bit 6 = 0): disarm after firing */
                 if (!(via_regs[VIA_ACR] & 0x40))
                         t1_armed = 0;
@@ -451,5 +477,5 @@ uint8_t via_get_ra(void)
  */
 uint8_t via_get_rb(void)
 {
-        return via_regs[VIA_RB];
+        return via_effective_rb();
 }

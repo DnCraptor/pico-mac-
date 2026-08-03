@@ -39,6 +39,10 @@
 static struct dvi_inst dvi0;
 static const uint8_t *s_fb = 0;      // Mac 1bpp framebuffer
 static uint16_t s_w = 0, s_h = 0;    // Mac resolution
+#ifdef BENCH_EMU
+static const uint8_t *s_bench_fb = 0;
+static uint16_t s_bench_w = 0, s_bench_h = 0;
+#endif
 static uint32_t s_line[OUT_W / 32];  // one 800px 1bpp scanline (100 bytes)
 static uint8_t  bit_reverse8[256];   // per-byte MSB<->LSB (encoder is LSB-first)
 
@@ -137,6 +141,11 @@ void graphics_init(void) {
 void graphics_set_buffer(uint8_t *buffer, uint16_t width, uint16_t height) {
     s_fb = buffer; s_w = width; s_h = height;
 }
+#ifdef BENCH_EMU
+void graphics_set_bench_buffer(uint8_t *buffer, uint16_t width, uint16_t height) {
+    s_bench_fb = buffer; s_bench_w = width; s_bench_h = height;
+}
+#endif
 
 // Remaining graphics.h contract is not used by the 1bpp HDMI path.
 void graphics_set_mode(enum graphics_mode_t m) { (void)m; }
@@ -167,13 +176,23 @@ void __not_in_flash_func(hdmi_dvi_loop)(void) {
             int my = y - voff;
             if (s_fb && my >= 0 && my < mac_h) {
                 const uint8_t *src = s_fb + (unsigned)my * mac_str;
-                memset(lb, 0x00, hoff_b);                          // black border
+                memset(lb, 0x00, hoff_b);
                 for (int b = 0; b < mac_str; ++b)
-                    lb[hoff_b + b] = bit_reverse8[src[b]] ^ inv;   // reverse + polarity
-                memset(lb + hoff_b + mac_str, 0x00,
-                       OUT_STRIDE - hoff_b - mac_str);
+                    lb[hoff_b + b] = bit_reverse8[src[b]] ^ inv;
+                memset(lb + hoff_b + mac_str, 0x00, OUT_STRIDE - hoff_b - mac_str);
+#ifdef BENCH_EMU
+            } else if (s_bench_fb && y >= voff + mac_h + 8 && y < voff + mac_h + 8 + s_bench_h) {
+                int by = y - (voff + mac_h + 8);
+                int bench_str = s_bench_w / 8;
+                int bench_off = ((OUT_W - s_bench_w) / 2) / 8;
+                const uint8_t *src = s_bench_fb + (unsigned)by * bench_str;
+                memset(lb, 0x00, bench_off);
+                for (int b = 0; b < bench_str; ++b)
+                    lb[bench_off + b] = bit_reverse8[src[b]] ^ inv;
+                memset(lb + bench_off + bench_str, 0x00, OUT_STRIDE - bench_off - bench_str);
+#endif
             } else {
-                memset(lb, 0x00, OUT_STRIDE);                      // black
+                memset(lb, 0x00, OUT_STRIDE);
             }
             uint32_t *tmds;
             queue_remove_blocking_u32(&dvi0.q_tmds_free, &tmds);

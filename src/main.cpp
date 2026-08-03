@@ -651,14 +651,27 @@ static int umac_cursor_button = 0;
  * The Mac hardware reads the sound buffer directly (DMA-like) at ~22 kHz.
  * ---------------------------------------------------------------------------
  */
-#define MAC_SOUNDBASE_ADDR1   0x027A
-#define MAC_SOUNDBASE_ADDR2   0x027E
+#define MAC_SOUNDBASE_ADDR    0x0266
 #define MAC_SOUND_BUF_SAMPLES  370u
 volatile static uint32_t snd_sample_idx = 0;
 static repeating_timer_t m_timer = { 0 };
+static volatile uint32_t snd_diag_base = 0;
+static volatile uint32_t snd_diag_count = 0;
+static volatile uint8_t snd_diag_min = 255;
+static volatile uint8_t snd_diag_max = 0;
 
+/* First-order DC blocker state.  The early Macintosh sound buffer uses a
+ * unipolar byte stream, and PB7 gates that stream.  Removing the DC component
+ * prevents a constant 0x00/0xFF buffer or a static PB7 level from becoming an
+ * audible tone on PWM/DVI outputs. */
+static int32_t snd_dc_prev_in = 0;
+static int32_t snd_dc_prev_out = 0;
+
+
+/* Physical display VSYNC is not the Macintosh sound-frame clock.
+ * Sound playback is synchronized to the emulated Macintosh VBL below.
+ */
 extern "C" void __not_in_flash_func(v_sync)(void) {
-    snd_sample_idx = 16;
 }
 
 /* Calling ~22255 times per second by timer
@@ -666,17 +679,21 @@ extern "C" void __not_in_flash_func(v_sync)(void) {
  * and updates the PWM duty cycle on BEEPER_PIN.
  */
 static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
-    /* sndres: VIA RB bit 7 -- when 0 the Mac hardware reset the speaker sound generation */
-    if (!(via_get_rb() & 0x80)) {
-//        pwm_set_gpio_level(BEEPER_PIN, 0);
-//        snd_sample_idx = 0;
+    uint8_t rb = via_get_rb();
+    uint8_t ra = via_get_ra();
+    uint8_t volume = ra & 0x07;
+
+    /* Volume 0 is hardware mute. Do not expose uninitialised sound RAM
+     * during ROM/System startup before the Sound Manager enables output. */
+    if (volume == 0) {
+        snd_dc_prev_in = 0;
+        snd_dc_prev_out = 0;
+        pwm_set_gpio_level(BEEPER_PIN, 128);
 #ifdef HDMI_DVI
-        hdmi_dvi_push_audio_sample(0, 0);   // keep the HDMI ring fed with silence
+        hdmi_dvi_push_audio_sample(0, 0);
 #endif
         return true;
     }
-
-    uint8_t ra = via_get_ra();
     // Apple Macintosh Hardware Memory Map (1983, Twiggy / early Mac docs)
     // PA3  → /SND PG2   (Sound page select)
     // active - inverted
@@ -685,24 +702,59 @@ static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
     // (The snd-branch used 0x5C00, the main<->alt distance, as a top offset,
     //  which is 0x300 too high and read past the alternate buffer -> silence
     //  whenever the app page-flipped to the alt buffer via PA3.)
-    uint32_t snd_base = (ra & 0b01000) ? RAM_SIZE - 0x0300 : RAM_SIZE - 0x5F00;
+    /* SoundBase is the single low-memory global at $0266 and points to the
+     * main hardware sound buffer.  $027A/$027E are SoundDCE/SoundActive,
+     * not sound-page pointers.  The alternate buffer is $5C00 bytes below
+     * the main buffer; PA3=1 selects main, PA3=0 selects alternate. */
+    uint32_t main_base = RAM_RD32(MAC_SOUNDBASE_ADDR);
+    uint32_t snd_base = main_base;
+    if (!(ra & 0x08)) {
+        if (main_base < 0x5C00u)
+            snd_base = RAM_SIZE;
+        else
+            snd_base = main_base - 0x5C00u;
+    }
+
+    /* Ignore an uninitialised/corrupt low-memory pointer.  Silence is safer
+     * than reading unrelated RAM and turning it into a continuous tone. */
+    if (snd_base >= RAM_SIZE ||
+        snd_base + MAC_SOUND_BUF_SAMPLES * 2u > RAM_SIZE) {
+        snd_dc_prev_in = 0;
+        snd_dc_prev_out = 0;
+        pwm_set_gpio_level(BEEPER_PIN, 128);
+#ifdef HDMI_DVI
+        hdmi_dvi_push_audio_sample(0, 0);
+#endif
+        return true;
+    }
 
     uint32_t idx  = snd_sample_idx++ % MAC_SOUND_BUF_SAMPLES;
     uint32_t addr = snd_base + idx * 2;
     uint8_t sample = RAM_RD8(CLAMP_RAM_ADDR(addr));
 
-    /* Volume: VIA RA[2:0] = 0 (mute) .. 7 (full). Scale sample linearly. */
-    // Apple Macintosh Hardware Memory Map (1983)
-    // PA2  → SV2   (Sound Volume bit 2)
-    // PA1  → SV1   (Sound Volume bit 1)
-    // PA0  → SV0   (Sound Volume bit 0)
-//    uint8_t volume = (ra & 0x07);
-//    uint8_t level = sample >> (8 - volume);
+    snd_diag_base = snd_base;
+    if (sample < snd_diag_min) snd_diag_min = sample;
+    if (sample > snd_diag_max) snd_diag_max = sample;
+    snd_diag_count++;
 
-    pwm_set_gpio_level(BEEPER_PIN, sample); // level);
+
+    /* PB7 gates the unipolar sound stream; it is not a global "do not read
+     * PCM" switch.  Keep advancing the DMA position while the gate is low.
+     * A one-pole DC blocker then removes the constant component:
+     *     y[n] = x[n] - x[n-1] + (255/256) * y[n-1]
+     */
+    int32_t gated = (rb & 0x80) ? (int32_t)sample : 0;
+    int32_t filtered = (snd_dc_prev_out * 255) / 256;
+    snd_dc_prev_in = gated;
+    snd_dc_prev_out = filtered;
+
+    int32_t scaled = filtered * volume / 7;
+    if (scaled < -128) scaled = -128;
+    if (scaled >  127) scaled =  127;
+
+    pwm_set_gpio_level(BEEPER_PIN, (uint8_t)(128 + scaled));
 #ifdef HDMI_DVI
-    // 8-bit unsigned (centered ~128) -> signed 16-bit, mono to both channels.
-    int16_t s16 = (int16_t)(((int)sample - 128) << 8);
+    int16_t s16 = (int16_t)(scaled << 8);
     hdmi_dvi_push_audio_sample(s16, s16);
 #endif
     return true;
@@ -746,6 +798,13 @@ static void     poll_umac()
         int64_t p_vsync = absolute_time_diff_us(last_vsync, now);
         if (p_vsync >= 16667) {
                 /* FIXME: Trigger this off actual vsync */
+
+                /* The Macintosh sound hardware scans exactly 370 sound words
+                 * per video frame. Keep the playback position synchronized
+                 * with the VBL delivered to the emulated machine, not with
+                 * the physical VGA/HDMI frame generated on core 1.
+                 */
+                snd_sample_idx = 0;
                 umac_vsync_event();
                 last_vsync = now;
         }
@@ -820,7 +879,7 @@ void __not_in_flash() flash_timings() {
  *   S x.xxx  Q<quantum> C<sysclk>   speed multiple, quantum(us), CPU MHz
  *   M xx.x                          effective m68k MHz
  */
-static const uint8_t bench_font[17][8] = {
+static const uint8_t bench_font[25][8] = {
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // ' '
     {0x00,0x00,0x00,0x00,0x00,0x60,0x60,0x00}, // '.'
     {0x70,0x88,0x98,0xA8,0xC8,0x88,0x70,0x00}, // '0'
@@ -838,6 +897,14 @@ static const uint8_t bench_font[17][8] = {
     {0x70,0x88,0x88,0x88,0xA8,0x90,0x68,0x00}, // 'Q'
     {0x70,0x88,0x80,0x80,0x80,0x88,0x70,0x00}, // 'C'
     {0x88,0x50,0x20,0x50,0x88,0x88,0x88,0x00}, // 'X'
+    {0xF0,0x88,0x88,0xF0,0x88,0x88,0xF0,0x00}, // 'B'
+    {0xF0,0x88,0x88,0xF0,0xA0,0x90,0x88,0x00}, // 'R'
+    {0xF0,0x88,0x88,0xF0,0x80,0x80,0x80,0x00}, // 'P'
+    {0xF8,0x80,0x80,0xF0,0x80,0x80,0xF8,0x00}, // 'E'
+    {0x70,0x88,0x88,0x88,0x88,0x88,0x70,0x00}, // 'O'
+    {0x70,0x88,0x88,0xF8,0x88,0x88,0x88,0x00}, // 'A'
+    {0xF8,0x80,0x80,0xF0,0x80,0x80,0x80,0x00}, // 'F'
+    {0x00,0x00,0x00,0xF8,0x00,0x00,0x00,0x00}, // '-'
 };
 static int bench_glyph_index(char c) {
     switch (c) {
@@ -847,6 +914,9 @@ static int bench_glyph_index(char c) {
         case '6': return 8;  case '7': return 9;  case '8': return 10;
         case '9': return 11; case 'S': return 12; case 'M': return 13;
         case 'Q': return 14; case 'C': return 15; case 'X': return 16;
+        case 'B': return 17; case 'R': return 18; case 'P': return 19;
+        case 'E': return 20; case 'O': return 21; case 'A': return 22;
+        case 'F': return 23; case '-': return 24;
         default:  return 0;  /* space */
     }
 }
@@ -882,23 +952,27 @@ static void bench_frame(uint8_t *fb, int stride, int w, int h) {
     for (int x = 0; x < w; ++x) { bench_setpx(fb, stride, x, 0, false); bench_setpx(fb, stride, x, h - 1, false); }
     for (int y = 0; y < h; ++y) { bench_setpx(fb, stride, 0, y, false); bench_setpx(fb, stride, w - 1, y, false); }
 }
-static void bench_draw(uint8_t *fb, int stride, const char *l1, const char *l2) {
-    bench_frame(fb, stride, DISP_WIDTH, DISP_HEIGHT);
-    bench_fillbox(fb, stride, 0, 0, 132, 21);
+static void bench_draw(uint8_t *fb, int stride, const char *l1, const char *l2, const char *l3) {
+    bench_fillbox(fb, stride, 0, 0, 512, 32);
     bench_puts(fb, stride, 2, 2,  l1);
     bench_puts(fb, stride, 2, 12, l2);
+    bench_puts(fb, stride, 2, 22, l3);
 }
 static void bench_run()
 {
     const uint64_t MAC_HZ = 7833600ULL; /* 68000 nominal clock */
-    uint8_t *fb = umac_ram + umac_get_fb_offset();
-    const int stride = DISP_WIDTH / 8;
+    static uint8_t bench_fb[512 * 32 / 8];
+    uint8_t *fb = bench_fb;
+    const int stride = 512 / 8;
+    memset(bench_fb, 0xFF, sizeof bench_fb);
+    graphics_set_bench_buffer(bench_fb, 512, 32);
     uint64_t last_real = time_us_64();
     uint64_t last_emu  = umac_get_global_time_us();
     uint64_t last_draw = 0;
     char line1[40] = "S----";
     char line2[24] = "M----";
-    bench_draw(fb, stride, line1, line2);   /* show HUD within the first frame */
+    char line3[64] = "RA--- RB--- P- E--- O---";
+    bench_draw(fb, stride, line1, line2, line3);   /* show HUD within the first frame */
     while (true) {
         poll_umac();
         uint64_t now = time_us_64();
@@ -916,10 +990,32 @@ static void bench_run()
             *p++ = 'C'; p = bench_u2s(p, (unsigned)CPU_MHZ); *p = 0;
             char *q = line2;
             *q++ = 'M'; q = bench_u2s(q, mt / 10); *q++ = '.'; *q++ = (char)('0' + mt % 10); *q = 0;
+            char *r = line3;
+            uint8_t ra = via_get_ra(), rb = via_get_rb();
+            uint32_t base = snd_diag_base;
+            uint32_t count = snd_diag_count;
+            unsigned smin = snd_diag_min;
+            unsigned smax = snd_diag_max;
+            snd_diag_count = 0;
+            snd_diag_min = 255;
+            snd_diag_max = 0;
+
+            *r++='R'; *r++='A'; r=bench_u2s(r,ra); *r++=' ';
+            *r++='R'; *r++='B'; r=bench_u2s(r,rb); *r++=' ';
+            *r++='P'; *r++=(ra & 0x08)?'1':'0'; *r++=' ';
+            *r++='A'; r=bench_u2s(r,base); *r++=' ';
+            *r++='C'; r=bench_u2s(r,count); *r++=' ';
+            *r++='E';
+            if (count != 0) {
+                r=bench_u2s(r,smin); *r++='-'; r=bench_u2s(r,smax);
+            } else {
+                *r++='-';
+            }
+            *r=0;
             last_real = now; last_emu += d_emu;
         }
         if (now - last_draw >= 33000ULL) {   /* ~30 Hz redraw keeps HUD visible */
-            bench_draw(fb, stride, line1, line2);
+            bench_draw(fb, stride, line1, line2, line3);
             last_draw = now;
         }
     }
@@ -993,8 +1089,12 @@ int main() {
         pwm_config_set_clkdiv(&_pwm_cfg, 1.0f);
         pwm_config_set_wrap(&_pwm_cfg, 0xFF);
         pwm_init(pwm_gpio_to_slice_num(BEEPER_PIN), &_pwm_cfg, true);
-        pwm_set_gpio_level(BEEPER_PIN, 0);
-    	add_repeating_timer_us(-1000000 / 22255, timer_callback, NULL, &m_timer);
+        pwm_set_gpio_level(BEEPER_PIN, 128);
+        /* repeating_timer uses an integer-microsecond period.
+         * 1000000 / 22255 truncates to 44 us, i.e. 22727 Hz.
+         * 45 us gives 22222 Hz, much closer to the Mac scan rate.
+         */
+        add_repeating_timer_us(-45, timer_callback, NULL, &m_timer);
     }
 
 #ifdef BENCH_EMU

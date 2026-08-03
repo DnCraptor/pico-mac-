@@ -51,6 +51,9 @@ bool graphics_system_clock_can_change(void);
 void graphics_set_mode(enum graphics_mode_t mode);
 
 void graphics_set_buffer(uint8_t* buffer, uint16_t width, uint16_t height);
+#ifdef BENCH_EMU
+void graphics_set_bench_buffer(uint8_t* buffer, uint16_t width, uint16_t height);
+#endif
 
 void graphics_set_offset(int x, int y);
 
