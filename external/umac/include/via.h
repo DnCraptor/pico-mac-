@@ -25,12 +25,15 @@
 #ifndef VIA_H
 #define VIA_H
 
+#include <stdint.h>
 #include <stdio.h>
 
 /* Callbacks for various VIA events: */
 struct via_cb {
         void (*ra_change)(uint8_t val);
         void (*rb_change)(uint8_t val);
+        void (*ca2_change)(uint8_t val);
+        void (*cb2_change)(uint8_t val);
         uint8_t (*ra_in)();
         uint8_t (*rb_in)();
         void (*sr_tx)(uint8_t val);
@@ -40,7 +43,7 @@ struct via_cb {
 void    via_init(struct via_cb *cb);
 void    via_write(unsigned int address, uint8_t data);
 uint8_t via_read(unsigned int address);
-void    via_tick(uint64_t time_us);
+void    via_tick(uint32_t elapsed_us);
 /* Trigger an event on CA1 or CA2: */
 void    via_caX_event(int ca);
 void    via_sr_rx(uint8_t val);
@@ -51,5 +54,8 @@ void    via_sr_rx(uint8_t val);
  */
 uint8_t via_get_ra(void);
 uint8_t via_get_rb(void);
+uint8_t via_get_ca2(void);
+uint8_t via_get_cb2(void);
+uint16_t via_get_t1_invert_time(void);
 
 #endif

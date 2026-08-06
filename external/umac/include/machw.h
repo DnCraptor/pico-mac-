@@ -105,36 +105,36 @@ extern int overlay;
                                          ((BASE)[(ADDR)+1]<<16) |       \
                                          ((BASE)[(ADDR)+2]<<8) |        \
                                          (BASE)[(ADDR)+3])
-#define READ_WORD_AL(BASE, ADDR)         (__builtin_bswap16(*(uint16_t *)&(BASE)[(ADDR)]))
+#define READ_WORD_AL(BASE, ADDR)         (__builtin_bswap16(*(const uint16_t *)&(BASE)[(ADDR)]))
+#define READ_LONG_AL(BASE, ADDR)         ((uint32_t)READ_WORD_AL(BASE, ADDR) << 16 | \
+                                         (uint32_t)READ_WORD_AL(BASE, (ADDR) + 2))
 
 #define WRITE_BYTE(BASE, ADDR, VAL)     do { \
                 (BASE)[ADDR] = (VAL)&0xff;   \
         } while(0)
 #define WRITE_WORD(BASE, ADDR, VAL)     do {                            \
-                (BASE)[ADDR] = ((VAL)>>8) & 0xff;                       \
-                (BASE)[(ADDR)+1] = (VAL)&0xff;                          \
+                *(uint16_t *)&(BASE)[ADDR] = __builtin_bswap16((uint16_t)(VAL)); \
         } while(0)
 #define WRITE_LONG(BASE, ADDR, VAL)     do {                            \
-                (BASE)[ADDR] = ((VAL)>>24) & 0xff;                      \
-                (BASE)[(ADDR)+1] = ((VAL)>>16)&0xff;                    \
-                (BASE)[(ADDR)+2] = ((VAL)>>8)&0xff;                     \
-                (BASE)[(ADDR)+3] = (VAL)&0xff;                          \
+                uint32_t _v = (uint32_t)(VAL);                          \
+                WRITE_WORD(BASE, ADDR, _v >> 16);                       \
+                WRITE_WORD(BASE, (ADDR) + 2, _v);                       \
         } while(0)
 
 /* Specific RAM/ROM access: */
 
 #define RAM_RD8(addr)                   READ_BYTE(_ram_base, addr)
-#define RAM_RD16(addr)                  READ_WORD(_ram_base, addr)
+#define RAM_RD16(addr)                  READ_WORD_AL(_ram_base, addr)
 #define RAM_RD_ALIGNED_BE16(addr)       READ_WORD_AL(_ram_base, addr)
-#define RAM_RD32(addr)                  READ_LONG(_ram_base, addr)
+#define RAM_RD32(addr)                  READ_LONG_AL(_ram_base, addr)
 
 #define RAM_WR8(addr, val)              WRITE_BYTE(_ram_base, addr, val)
 #define RAM_WR16(addr, val)             WRITE_WORD(_ram_base, addr, val)
 #define RAM_WR32(addr, val)             WRITE_LONG(_ram_base, addr, val)
 
 #define ROM_RD8(addr)                   READ_BYTE(_rom_base, addr)
-#define ROM_RD16(addr)                  READ_WORD(_rom_base, addr)
+#define ROM_RD16(addr)                  READ_WORD_AL(_rom_base, addr)
 #define ROM_RD_ALIGNED_BE16(addr)       READ_WORD_AL(_rom_base, addr)
-#define ROM_RD32(addr)                  READ_LONG(_rom_base, addr)
+#define ROM_RD32(addr)                  READ_LONG_AL(_rom_base, addr)
 
 #endif

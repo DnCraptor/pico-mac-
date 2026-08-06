@@ -42,13 +42,7 @@ void            cpu_set_fc(unsigned int fc);
 int             cpu_irq_ack(int level);
 void            cpu_instr_callback(int pc);
 
-extern unsigned int (*cpu_read_instr)(unsigned int address);
-
-/* This is special: an aligned 16b opcode, and will never act on MMIO.
- */
-static inline unsigned int    cpu_read_instr_word(unsigned int address)
-{
-        return cpu_read_instr(address);
-}
+/* This is special: an aligned 16b opcode, and will never act on MMIO. */
+unsigned int    cpu_read_instr_word(unsigned int address);
 
 #endif

@@ -28,7 +28,7 @@ option(I2S_CS4334 "Enable I2S CS4334 sound" OFF)
 option(VGA "Enable VGA" OFF)
 option(TFT "Enable TFT display" OFF)
 option(ILI9341 "Enable TFT ILI9341 display" OFF)
-option(HDMI "Enable HDMI display" OFF)
+option(HDMI_DVI "Enable HDMI display" ON)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
@@ -51,7 +51,7 @@ endif()
 
 set (PORT_VERSION "0.1.0")
 
-set(HDMI_DVI ON)
+#set(HDMI_DVI ON)
 
 #set(I2S ON)
 ###set(TV ON)
@@ -132,6 +132,25 @@ endforeach ()
 message(STATUS "")
 
 add_executable(${PROJECT_NAME} ${SRC})
+
+# Cross-TU inlining is especially valuable for Musashi: every emulated memory
+# access otherwise crosses from m68kops.c into the umac address decoder.
+#include(CheckIPOSupported)
+#check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR LANGUAGES C CXX)
+#if(IPO_SUPPORTED)
+#    set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+#else()
+#    message(WARNING "IPO/LTO is not supported: ${IPO_ERROR}")
+#endif()
+
+# Keep the emulator core aggressive without increasing every driver.
+set_source_files_properties(
+    external/umac/src/main.c
+    external/umac/src/via.c
+    external/umac/external/Musashi/m68kcpu.c
+    external/umac/external/Musashi/m68kops.c
+    PROPERTIES COMPILE_OPTIONS "-O3"
+)
 
 pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
@@ -255,7 +274,7 @@ ELSE()
         CPU_MHZ=${CPU_MHZ}
 
         # --- pins provided by boards/${PICO_BOARD}.h (Phase 2b) ---
-
+        
         PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
         DEFAULT_THROTTLING=0
 

@@ -50,6 +50,7 @@ extern "C" {
 #include "disc.h"
 #include "umac.h"
 #include "kbd.h"
+uint16_t via_get_t1_invert_time(void);
 }
 
 extern volatile int cursor_x;
@@ -79,7 +80,7 @@ static const uint8_t __in_flash() __aligned(4096) umac_rom[128 << 10] = {
     #endif
 #endif
 };
-static uint8_t umac_ram[RAM_SIZE];
+static uint8_t umac_ram[RAM_SIZE] __aligned(8);
 
 struct semaphore vga_start_semaphore;
 
@@ -651,21 +652,39 @@ static int umac_cursor_button = 0;
  * The Mac hardware reads the sound buffer directly (DMA-like) at ~22 kHz.
  * ---------------------------------------------------------------------------
  */
-#define MAC_SOUNDBASE_ADDR    0x0266
 #define MAC_SOUND_BUF_SAMPLES  370u
-volatile static uint32_t snd_sample_idx = 0;
-static repeating_timer_t m_timer = { 0 };
-static volatile uint32_t snd_diag_base = 0;
-static volatile uint32_t snd_diag_count = 0;
-static volatile uint8_t snd_diag_min = 255;
-static volatile uint8_t snd_diag_max = 0;
+#define MAC_SOUND_SUBTICKS       16u
+/* Mini vMac keeps sixteen host buffers of 512 samples.  Use the same total
+ * buffering depth here so normal poll/alarm jitter cannot overflow a queue
+ * that previously held only 1.38 Macintosh frames. */
+#define MAC_SOUND_QUEUE_SIZE   8192u
+#define MAC_SOUND_PREFILL       512u
+static alarm_id_t snd_alarm_id = 0;
+static uint32_t snd_alarm_frac = 0;
+static int16_t snd_queue[MAC_SOUND_QUEUE_SIZE];
+static volatile uint32_t snd_queue_head = 0;
+static volatile uint32_t snd_queue_tail = 0;
+static volatile bool snd_playback_started = false;
 
-/* First-order DC blocker state.  The early Macintosh sound buffer uses a
- * unipolar byte stream, and PB7 gates that stream.  Removing the DC component
- * prevents a constant 0x00/0xFF buffer or a static PB7 level from becoming an
- * audible tone on PWM/DVI outputs. */
-static int32_t snd_dc_prev_in = 0;
-static int32_t snd_dc_prev_out = 0;
+static const uint16_t snd_subtick_offset[MAC_SOUND_SUBTICKS] = {
+    0, 25, 50, 90, 102, 115, 138, 161,
+    185, 208, 231, 254, 277, 300, 323, 346
+};
+static const uint8_t snd_subtick_count[MAC_SOUND_SUBTICKS] = {
+    25, 25, 40, 12, 13, 23, 23, 24,
+    23, 23, 23, 23, 23, 23, 23, 24
+};
+/* Classic Macintosh volume transfer used by Mini vMac.  Volume 7 is
+ * unscaled; levels 0..6 attenuate around the unsigned 8-bit centre (128). */
+static const uint16_t snd_vol_mult[7] = {
+    8192, 9362, 10922, 13107, 16384, 21845, 32768
+};
+static const uint16_t snd_vol_offset[7] = {
+    28672, 28087, 27307, 26215, 24576, 21846, 16384
+};
+
+static uint32_t snd_invert_phase = 0;
+static uint8_t snd_invert_state = 0;
 
 
 /* Physical display VSYNC is not the Macintosh sound-frame clock.
@@ -674,97 +693,140 @@ static int32_t snd_dc_prev_out = 0;
 extern "C" void __not_in_flash_func(v_sync)(void) {
 }
 
-/* Calling ~22255 times per second by timer
- * Reads the active Mac sound buffer via SoundBase global, scales by volume,
- * and updates the PWM duty cycle on BEEPER_PIN.
+/* Copy one Mini vMac sound subtick from guest RAM into a host-side queue.
+ * The guest buffer is sampled in the same 16 blocks used by Mini vMac, so
+ * reads stay in phase with the emulated frame while the hardware timer below
+ * only performs uniform host playback.
  */
-static bool __not_in_flash_func(timer_callback)(repeating_timer_t *rt) {
+static void snd_capture_subtick(unsigned subtick)
+{
+    if (subtick >= MAC_SOUND_SUBTICKS)
+        return;
+
     uint8_t rb = via_get_rb();
     uint8_t ra = via_get_ra();
     uint8_t volume = ra & 0x07;
+    uint16_t invert_time = via_get_t1_invert_time();
+    const uint32_t main_base = RAM_SIZE - 0x0300u;
+    const uint32_t alt_base  = RAM_SIZE - 0x5F00u;
+    const uint32_t snd_base = (ra & 0x08) ? main_base : alt_base;
+    const uint32_t first = snd_subtick_offset[subtick];
+    const uint32_t count = snd_subtick_count[subtick];
 
-    /* Volume 0 is hardware mute. Do not expose uninitialised sound RAM
-     * during ROM/System startup before the Sound Manager enables output. */
-    if (volume == 0) {
-        snd_dc_prev_in = 0;
-        snd_dc_prev_out = 0;
-        pwm_set_gpio_level(BEEPER_PIN, 128);
-#ifdef HDMI_DVI
-        hdmi_dvi_push_audio_sample(0, 0);
-#endif
-        return true;
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t idx = first + i;
+        uint32_t addr = snd_base + idx * 2u;
+        /* Mini vMac uses 16-bit host samples for this build: the Macintosh
+         * high byte is shifted left by eight before inversion and volume.
+         * Keep the whole path in that domain; doing the multiply in 8 bits
+         * discards low-level waveform detail and reduces quiet sounds to
+         * isolated transitions. */
+        uint32_t out =
+            (uint32_t)RAM_RD8(CLAMP_RAM_ADDR(addr)) << 8;
+
+        /* Mini vMac classic-sound path.  PB7 disables the raw PCM only
+         * when Timer 1 is not driving the speaker inversion circuit.  In
+         * ACR mode 0xC0 the T1 latch controls the square-wave inversion used
+         * by alert sounds and by the Sound control panel test. */
+        /* Mini vMac wires SoundDisable directly to VIA1 PB7, without
+         * inversion.  A high level disables ordinary PCM unless Timer 1
+         * inversion is active. */
+        if ((rb & 0x80) && invert_time == 0) {
+            out = 0x8000u;
+        } else if (invert_time != 0) {
+            uint32_t phase_incr = (uint32_t)invert_time * 20u;
+            if (snd_invert_phase < 704u) {
+                uint32_t on_portion = 0;
+                uint32_t last_phase = 0;
+                do {
+                    if (!snd_invert_state)
+                        on_portion += snd_invert_phase - last_phase;
+                    snd_invert_state ^= 1u;
+                    last_phase = snd_invert_phase;
+                    snd_invert_phase += phase_incr;
+                } while (snd_invert_phase < 704u);
+                if (!snd_invert_state)
+                    on_portion += 704u - last_phase;
+                out = (out * on_portion) / 704u;
+            } else if (snd_invert_state) {
+                out = 0;
+            }
+            snd_invert_phase -= 704u;
+        }
+
+        if (volume < 7)
+            out = ((out * snd_vol_mult[volume]) >> 16)
+                + snd_vol_offset[volume];
+
+        /* SNDEMDEV writes the post-volume sample directly to the host
+         * buffer.  Centre unsigned Macintosh PCM at zero for the signed
+         * PWM/DVI queue, but do not apply an extra high-pass filter. */
+        int32_t centred = (int32_t)out - 0x8000;
+        if (centred < INT16_MIN) centred = INT16_MIN;
+        if (centred > INT16_MAX) centred = INT16_MAX;
+
+        uint32_t head = snd_queue_head;
+        uint32_t next = (head + 1u) & (MAC_SOUND_QUEUE_SIZE - 1u);
+        if (next != snd_queue_tail) {
+            snd_queue[head] = (int16_t)centred;
+            snd_queue_head = next;
+        }
     }
-    // Apple Macintosh Hardware Memory Map (1983, Twiggy / early Mac docs)
-    // PA3  → /SND PG2   (Sound page select)
-    // active - inverted
-    // Sound buffers (Inside Macintosh, top-of-RAM relative):
-    //   main = MemTop - 0x0300, alternate = MemTop - 0x5F00.
-    // (The snd-branch used 0x5C00, the main<->alt distance, as a top offset,
-    //  which is 0x300 too high and read past the alternate buffer -> silence
-    //  whenever the app page-flipped to the alt buffer via PA3.)
-    /* SoundBase is the single low-memory global at $0266 and points to the
-     * main hardware sound buffer.  $027A/$027E are SoundDCE/SoundActive,
-     * not sound-page pointers.  The alternate buffer is $5C00 bytes below
-     * the main buffer; PA3=1 selects main, PA3=0 selects alternate. */
-    uint32_t main_base = RAM_RD32(MAC_SOUNDBASE_ADDR);
-    uint32_t snd_base = main_base;
-    if (!(ra & 0x08)) {
-        if (main_base < 0x5C00u)
-            snd_base = RAM_SIZE;
-        else
-            snd_base = main_base - 0x5C00u;
+
+}
+
+/* Host playback clock. Guest RAM is never read here; samples were captured
+ * at the Mini vMac subtick positions above. */
+static int64_t __not_in_flash_func(sound_alarm_callback)(alarm_id_t id, void *user_data)
+{
+    (void)id;
+    (void)user_data;
+
+    uint32_t head = snd_queue_head;
+    uint32_t tail = snd_queue_tail;
+    uint32_t queued = (head - tail) & (MAC_SOUND_QUEUE_SIZE - 1u);
+
+    /* Match Mini vMac's host-side buffering policy: do not begin playback
+     * from an almost empty queue.  After an underrun, wait for one complete
+     * 512-sample host block before resuming. */
+    if (!snd_playback_started && queued >= MAC_SOUND_PREFILL)
+        snd_playback_started = true;
+
+    int16_t s16 = 0;
+    if (snd_playback_started) {
+        if (tail != head) {
+            s16 = snd_queue[tail];
+            snd_queue_tail = (tail + 1u) & (MAC_SOUND_QUEUE_SIZE - 1u);
+        } else {
+            snd_playback_started = false;
+        }
     }
 
-    /* Ignore an uninitialised/corrupt low-memory pointer.  Silence is safer
-     * than reading unrelated RAM and turning it into a continuous tone. */
-    if (snd_base >= RAM_SIZE ||
-        snd_base + MAC_SOUND_BUF_SAMPLES * 2u > RAM_SIZE) {
-        snd_dc_prev_in = 0;
-        snd_dc_prev_out = 0;
-        pwm_set_gpio_level(BEEPER_PIN, 128);
+    pwm_set_gpio_level(BEEPER_PIN, (uint8_t)(128 + (s16 >> 8)));
 #ifdef HDMI_DVI
-        hdmi_dvi_push_audio_sample(0, 0);
-#endif
-        return true;
-    }
-
-    uint32_t idx  = snd_sample_idx++ % MAC_SOUND_BUF_SAMPLES;
-    uint32_t addr = snd_base + idx * 2;
-    uint8_t sample = RAM_RD8(CLAMP_RAM_ADDR(addr));
-
-    snd_diag_base = snd_base;
-    if (sample < snd_diag_min) snd_diag_min = sample;
-    if (sample > snd_diag_max) snd_diag_max = sample;
-    snd_diag_count++;
-
-
-    /* PB7 gates the unipolar sound stream; it is not a global "do not read
-     * PCM" switch.  Keep advancing the DMA position while the gate is low.
-     * A one-pole DC blocker then removes the constant component:
-     *     y[n] = x[n] - x[n-1] + (255/256) * y[n-1]
-     */
-    int32_t gated = (rb & 0x80) ? (int32_t)sample : 0;
-    int32_t filtered = (snd_dc_prev_out * 255) / 256;
-    snd_dc_prev_in = gated;
-    snd_dc_prev_out = filtered;
-
-    int32_t scaled = filtered * volume / 7;
-    if (scaled < -128) scaled = -128;
-    if (scaled >  127) scaled =  127;
-
-    pwm_set_gpio_level(BEEPER_PIN, (uint8_t)(128 + scaled));
-#ifdef HDMI_DVI
-    int16_t s16 = (int16_t)(scaled << 8);
     hdmi_dvi_push_audio_sample(s16, s16);
 #endif
-    return true;
+    /* One Macintosh frame is 130240 CPU cycles and contains 370 samples.
+     * At 7.8336 MHz this is exactly 244800/11 samples/s, hence a sample
+     * period of 6875/153 us = 44 + 143/153 us.  Alternate 44/45 us with
+     * this exact rational accumulator so the host consumer cannot drift
+     * against the emulated-frame producer. */
+    uint32_t delay_us = 44u;
+    snd_alarm_frac += 143u;
+    if (snd_alarm_frac >= 153u) {
+        snd_alarm_frac -= 153u;
+        delay_us = 45u;
+    }
+    return -(int64_t)delay_us;
 }
 
 
 static void     poll_umac()
 {
-        static absolute_time_t last_1hz = 0;
-        static absolute_time_t last_vsync = 0;
+        /* Mini vMac defines one sixtieth as exactly 130240 cycles of the
+         * 7.8336 MHz Macintosh clock.  Keep the scheduler in scaled units
+         * (microseconds * clock Hz) so no fractional frame time is lost. */
+        static unsigned sound_subtick = 0;
         absolute_time_t now = get_absolute_time();
 
 #ifdef HDMI_DVI
@@ -794,23 +856,55 @@ static void     poll_umac()
 
         umac_loop();
 
-        int64_t p_1hz = absolute_time_diff_us(last_1hz, now);
-        int64_t p_vsync = absolute_time_diff_us(last_vsync, now);
-        if (p_vsync >= 16667) {
-                /* FIXME: Trigger this off actual vsync */
+        /* Mini vMac schedules VBL and its sixteen sound subticks from the
+         * emulated 68000 cycle clock, not from host wall time.  Accumulate one
+         * fixed quantum instead of rebuilding absolute scaled time here:
+         *
+         *     mac_now_us * 7,833,600
+         *
+         * is a full 64-bit multiply on every 46-us poll.  That made the new
+         * sound scheduler itself strongly quantum-dependent.  In scaled units
+         * one subtick is exactly 130240 / 16 cycles, so the incremental form is
+         * both cheaper and bit-for-bit phase exact. */
+        /* 7,833,600 / 1,000,000 reduces exactly to 4896 / 625.
+         * Keep the phase in numerator units, so the per-quantum path is only
+         * 32-bit add/compare/subtract.  Do not reuse VIA's 2448 / 3125
+         * conversion here: the VIA clock is exactly one tenth of the
+         * Macintosh CPU/sound clock.  The subtick threshold is
+         * 8140 * 625 = 5,087,500, safely below UINT32_MAX. */
+        static uint32_t mac_subtick_phase_num = 0;
+        static uint32_t mac_second_phase_us = 0;
+        static uint32_t mac_quantum_num = 0;
+        static uint32_t mac_quantum_us = 0;
+        constexpr uint32_t mac_clock_num = 4896u;
+        constexpr uint32_t mac_clock_den = 625u;
+        constexpr uint32_t mac_subtick_cycles =
+            130240u / MAC_SOUND_SUBTICKS;
+        constexpr uint32_t mac_subtick_threshold =
+            mac_subtick_cycles * mac_clock_den;
 
-                /* The Macintosh sound hardware scans exactly 370 sound words
-                 * per video frame. Keep the playback position synchronized
-                 * with the VBL delivered to the emulated machine, not with
-                 * the physical VGA/HDMI frame generated on core 1.
-                 */
-                snd_sample_idx = 0;
-                umac_vsync_event();
-                last_vsync = now;
+        if (mac_quantum_num == 0) {
+                mac_quantum_us = (uint32_t)umac_get_execloop_quantum();
+                mac_quantum_num = mac_quantum_us * mac_clock_num;
         }
-        if (p_1hz >= 1000000) {
+        mac_subtick_phase_num += mac_quantum_num;
+        mac_second_phase_us += mac_quantum_us;
+
+        /* Mini vMac reads the 370 sound words in 16 deliberately uneven
+         * blocks.  snd_capture_subtick() already chooses the exact cumulative
+         * sample boundaries within those sixteen equal-time intervals. */
+        if (mac_subtick_phase_num >= mac_subtick_threshold) {
+                mac_subtick_phase_num -= mac_subtick_threshold;
+                snd_capture_subtick(sound_subtick++);
+                if (sound_subtick == MAC_SOUND_SUBTICKS) {
+                        sound_subtick = 0;
+                        umac_vsync_event();
+                }
+        }
+
+        if (mac_second_phase_us >= 1000000u) {
+                mac_second_phase_us -= 1000000u;
                 umac_1hz_event();
-                last_1hz = now;
         }
 
         int update = 0;
@@ -971,7 +1065,7 @@ static void bench_run()
     uint64_t last_draw = 0;
     char line1[40] = "S----";
     char line2[24] = "M----";
-    char line3[64] = "RA--- RB--- P- E--- O---";
+    char line3[32] = "RA--- RB--- P-";
     bench_draw(fb, stride, line1, line2, line3);   /* show HUD within the first frame */
     while (true) {
         poll_umac();
@@ -992,25 +1086,9 @@ static void bench_run()
             *q++ = 'M'; q = bench_u2s(q, mt / 10); *q++ = '.'; *q++ = (char)('0' + mt % 10); *q = 0;
             char *r = line3;
             uint8_t ra = via_get_ra(), rb = via_get_rb();
-            uint32_t base = snd_diag_base;
-            uint32_t count = snd_diag_count;
-            unsigned smin = snd_diag_min;
-            unsigned smax = snd_diag_max;
-            snd_diag_count = 0;
-            snd_diag_min = 255;
-            snd_diag_max = 0;
-
             *r++='R'; *r++='A'; r=bench_u2s(r,ra); *r++=' ';
             *r++='R'; *r++='B'; r=bench_u2s(r,rb); *r++=' ';
-            *r++='P'; *r++=(ra & 0x08)?'1':'0'; *r++=' ';
-            *r++='A'; r=bench_u2s(r,base); *r++=' ';
-            *r++='C'; r=bench_u2s(r,count); *r++=' ';
-            *r++='E';
-            if (count != 0) {
-                r=bench_u2s(r,smin); *r++='-'; r=bench_u2s(r,smax);
-            } else {
-                *r++='-';
-            }
+            *r++='P'; *r++=(ra & 0x08)?'1':'0';
             *r=0;
             last_real = now; last_emu += d_emu;
         }
@@ -1082,7 +1160,8 @@ int main() {
     disc_setup(discs);
     umac_init(umac_ram, (void *)umac_rom, discs);
 
-    /* PWM for Mac sound: updates at ~21.7 kHz */
+    /* PWM/DVI playback clock. Guest RAM is captured by the 16 Mini vMac
+     * sound subticks in poll_umac(); this alarm only drains the queue. */
     {
         pwm_config _pwm_cfg = pwm_get_default_config();
         gpio_set_function(BEEPER_PIN, GPIO_FUNC_PWM);
@@ -1090,11 +1169,14 @@ int main() {
         pwm_config_set_wrap(&_pwm_cfg, 0xFF);
         pwm_init(pwm_gpio_to_slice_num(BEEPER_PIN), &_pwm_cfg, true);
         pwm_set_gpio_level(BEEPER_PIN, 128);
-        /* repeating_timer uses an integer-microsecond period.
-         * 1000000 / 22255 truncates to 44 us, i.e. 22727 Hz.
-         * 45 us gives 22222 Hz, much closer to the Mac scan rate.
-         */
-        add_repeating_timer_us(-45, timer_callback, NULL, &m_timer);
+
+        snd_queue_head = 0;
+        snd_queue_tail = 0;
+        snd_playback_started = false;
+        snd_invert_phase = 0;
+        snd_invert_state = 0;
+        snd_alarm_frac = 0;
+        snd_alarm_id = add_alarm_in_us(45, sound_alarm_callback, NULL, true);
     }
 
 #ifdef BENCH_EMU

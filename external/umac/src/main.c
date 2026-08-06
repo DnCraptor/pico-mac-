@@ -256,7 +256,7 @@ static void     kbd_rx(uint8_t data)
         }
 }
 
-static void     kbd_check_work()
+static void FAST_FUNC(kbd_check_work)()
 {
         /* Process a keyboard command a little later than the transmit
          * time (i.e. not immediately, which makes the mac feel rushed
@@ -343,26 +343,23 @@ uint8_t iwm_read(unsigned int address)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static unsigned int  FAST_FUNC(cpu_read_instr_normal)(unsigned int address)
+unsigned int FAST_FUNC(cpu_read_instr_word)(unsigned int address)
 {
-        /* Can check for 0x400000 (ROM) and otherwise RAM */
-        if ((address & 0xf00000) != ROM_ADDR)
-                return RAM_RD_ALIGNED_BE16(CLAMP_RAM_ADDR(address));
-        else
-                return ROM_RD_ALIGNED_BE16(address & (ROM_SIZE - 1));
+        /* Instruction fetch is the hottest host-side memory operation.
+         * Avoid the old indirect call through cpu_read_instr on every word.
+         * Overlay is changed only during reset/early boot and is strongly
+         * predicted false during normal operation. */
+        address = ADR24(address);
+        const unsigned int region = address & 0xf00000u;
+        if (__builtin_expect(!overlay, 1)) {
+                if (region != ROM_ADDR)
+                        return RAM_RD_ALIGNED_BE16(CLAMP_RAM_ADDR(address));
+        } else {
+                if (region != 0 && region != ROM_ADDR)
+                        return RAM_RD_ALIGNED_BE16(CLAMP_RAM_ADDR(address));
+        }
+        return ROM_RD_ALIGNED_BE16(address & (ROM_SIZE - 1));
 }
-
-static unsigned int  FAST_FUNC(cpu_read_instr_overlay)(unsigned int address)
-{
-        /* Need to check for both 0=ROM, 0x400000=ROM, and RAM at 0x600000...
-         */
-        if (IS_ROM(address))
-                return ROM_RD_ALIGNED_BE16(address & (ROM_SIZE - 1));
-        else /* RAM */
-                return RAM_RD_ALIGNED_BE16(CLAMP_RAM_ADDR(address));
-}
-
-unsigned int (*cpu_read_instr)(unsigned int address) = cpu_read_instr_overlay;
 
 /* Read data from RAM, ROM, or a device */
 unsigned int    FAST_FUNC(cpu_read_byte)(unsigned int address)
@@ -489,14 +486,9 @@ void    FAST_FUNC(cpu_write_long)(unsigned int address, unsigned int value)
         printf("Ignoring write %08x to address %08x\n", value, address);
 }
 
-/* Update function pointers for memory accessors based on overlay state/memory map layout */
-static void     update_overlay_layout()
+/* Instruction fetch now reads overlay directly; no per-layout function pointer. */
+static void update_overlay_layout(void)
 {
-        if (overlay) {
-                cpu_read_instr = cpu_read_instr_overlay;
-        } else {
-                cpu_read_instr = cpu_read_instr_normal;
-        }
 }
 
 /* Called when the CPU pulses the RESET line */
@@ -630,7 +622,7 @@ void    umac_mouse(int deltax, int deltay, int button)
         via_mouse_pressed = button;
 }
 
-static void     mouse_tick()
+static void FAST_FUNC(mouse_tick)()
 {
         /* Periodically, check if the mouse X/Y deltas are non-zero.
          * If a movement is required, encode one step in X and/or Y
@@ -707,7 +699,7 @@ void    umac_disc_ejected()
 /* Run the emulator for about a frame.
  * Returns 0 for not-done, 1 when an exit/done condition arises.
  */
-int     umac_loop()
+int FAST_FUNC(umac_loop)()
 {
         setjmp(main_loop_jb);
 
@@ -716,7 +708,7 @@ int     umac_loop()
         global_time_us += us;
 
         // Device polling
-        via_tick(global_time_us);
+        via_tick((uint32_t)us);
         mouse_tick();
         kbd_check_work();
 

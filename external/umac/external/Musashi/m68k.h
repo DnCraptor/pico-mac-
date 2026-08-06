@@ -30,6 +30,8 @@
 #ifndef M68K__HEADER
 #define M68K__HEADER
 
+#include <pico.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -9,7 +9,7 @@ extern void m68881_mmu_ops(void);
 /* ======================================================================== */
 
 
-static void m68k_op_1010(void)
+static void M68K_FAST_FUNC(m68k_op_1010)(void) /* In SRAM */
 {
 	m68ki_exception_1010();
 }
@@ -381,7 +381,7 @@ static void m68k_op_add_8_er_i(void)
 }
 
 
-static void m68k_op_add_16_er_d(void)
+static void M68K_FAST_FUNC(m68k_op_add_16_er_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = MASK_OUT_ABOVE_16(DY);
@@ -429,7 +429,7 @@ static void m68k_op_add_16_er_ai(void)
 }
 
 
-static void m68k_op_add_16_er_pi(void)
+static void M68K_FAST_FUNC(m68k_op_add_16_er_pi)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = OPER_AY_PI_16();
@@ -573,7 +573,7 @@ static void m68k_op_add_16_er_i(void)
 }
 
 
-static void m68k_op_add_32_er_d(void)
+static void M68K_FAST_FUNC(m68k_op_add_32_er_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = DY;
@@ -925,7 +925,7 @@ static void m68k_op_add_16_re_ai(void)
 }
 
 
-static void m68k_op_add_16_re_pi(void)
+static void M68K_FAST_FUNC(m68k_op_add_16_re_pi)(void) /* In SRAM */
 {
 	uint ea = EA_AY_PI_16();
 	uint src = MASK_OUT_ABOVE_16(DX);
@@ -1069,7 +1069,7 @@ static void m68k_op_add_32_re_pd(void)
 }
 
 
-static void m68k_op_add_32_re_di(void)
+static void M68K_FAST_FUNC(m68k_op_add_32_re_di)(void) /* In SRAM */
 {
 	uint ea = EA_AY_DI_32();
 	uint src = DX;
@@ -1133,7 +1133,7 @@ static void m68k_op_add_32_re_al(void)
 }
 
 
-static void m68k_op_adda_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_adda_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &AX;
 
@@ -1230,7 +1230,7 @@ static void m68k_op_adda_16_pcix(void)
 }
 
 
-static void m68k_op_adda_16_i(void)
+static void M68K_FAST_FUNC(m68k_op_adda_16_i)(void) /* In SRAM */
 {
 	uint* r_dst = &AX;
 	uint src = MAKE_INT_16(OPER_I_16());
@@ -1239,7 +1239,7 @@ static void m68k_op_adda_16_i(void)
 }
 
 
-static void m68k_op_adda_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_adda_32_d)(void) /* In SRAM */
 {
 	uint* r_dst = &AX;
 
@@ -1247,7 +1247,7 @@ static void m68k_op_adda_32_d(void)
 }
 
 
-static void m68k_op_adda_32_a(void)
+static void M68K_FAST_FUNC(m68k_op_adda_32_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AX;
 
@@ -1505,7 +1505,7 @@ static void m68k_op_addi_8_al(void)
 }
 
 
-static void m68k_op_addi_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_addi_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = OPER_I_16();
@@ -1761,7 +1761,7 @@ static void m68k_op_addi_32_al(void)
 }
 
 
-static void m68k_op_addq_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_addq_8_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -1857,7 +1857,7 @@ static void m68k_op_addq_8_pd7(void)
 }
 
 
-static void m68k_op_addq_8_di(void)
+static void M68K_FAST_FUNC(m68k_op_addq_8_di)(void) /* In SRAM */
 {
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
 	uint ea = EA_AY_DI_8();
@@ -1921,7 +1921,7 @@ static void m68k_op_addq_8_al(void)
 }
 
 
-static void m68k_op_addq_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_addq_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -1937,7 +1937,7 @@ static void m68k_op_addq_16_d(void)
 }
 
 
-static void m68k_op_addq_16_a(void)
+static void M68K_FAST_FUNC(m68k_op_addq_16_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 
@@ -2057,7 +2057,7 @@ static void m68k_op_addq_16_al(void)
 }
 
 
-static void m68k_op_addq_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_addq_32_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -2073,7 +2073,7 @@ static void m68k_op_addq_32_d(void)
 }
 
 
-static void m68k_op_addq_32_a(void)
+static void M68K_FAST_FUNC(m68k_op_addq_32_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 
@@ -2362,7 +2362,7 @@ static void m68k_op_addx_32_mm(void)
 }
 
 
-static void m68k_op_and_8_er_d(void)
+static void M68K_FAST_FUNC(m68k_op_and_8_er_d)(void) /* In SRAM */
 {
 	FLAG_Z = MASK_OUT_ABOVE_8(DX &= (DY | 0xffffff00));
 
@@ -2552,7 +2552,7 @@ static void m68k_op_and_16_er_ix(void)
 }
 
 
-static void m68k_op_and_16_er_aw(void)
+static void M68K_FAST_FUNC(m68k_op_and_16_er_aw)(void) /* In SRAM */
 {
 	FLAG_Z = MASK_OUT_ABOVE_16(DX &= (OPER_AW_16() | 0xffff0000));
 
@@ -2662,7 +2662,7 @@ static void m68k_op_and_32_er_ix(void)
 }
 
 
-static void m68k_op_and_32_er_aw(void)
+static void M68K_FAST_FUNC(m68k_op_and_32_er_aw)(void) /* In SRAM */
 {
 	FLAG_Z = DX &= OPER_AW_32();
 
@@ -3034,7 +3034,7 @@ static void m68k_op_and_32_re_al(void)
 }
 
 
-static void m68k_op_andi_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_andi_8_d)(void) /* In SRAM */
 {
 	FLAG_Z = MASK_OUT_ABOVE_8(DY &= (OPER_I_8() | 0xffffff00));
 
@@ -3179,7 +3179,7 @@ static void m68k_op_andi_8_al(void)
 }
 
 
-static void m68k_op_andi_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_andi_16_d)(void) /* In SRAM */
 {
 	FLAG_Z = MASK_OUT_ABOVE_16(DY &= (OPER_I_16() | 0xffff0000));
 
@@ -3799,7 +3799,7 @@ static void m68k_op_asl_8_s(void)
 }
 
 
-static void m68k_op_asl_16_s(void)
+static void M68K_FAST_FUNC(m68k_op_asl_16_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -4077,7 +4077,7 @@ static void m68k_op_bhi_8(void)
 }
 
 
-static void m68k_op_bls_8(void)
+static void M68K_FAST_FUNC(m68k_op_bls_8)(void) /* In SRAM */
 {
 	if(COND_LS())
 	{
@@ -4089,7 +4089,7 @@ static void m68k_op_bls_8(void)
 }
 
 
-static void m68k_op_bcc_8(void)
+static void M68K_FAST_FUNC(m68k_op_bcc_8)(void) /* In SRAM */
 {
 	if(COND_CC())
 	{
@@ -4101,7 +4101,7 @@ static void m68k_op_bcc_8(void)
 }
 
 
-static void m68k_op_bcs_8(void)
+static void M68K_FAST_FUNC(m68k_op_bcs_8)(void) /* In SRAM */
 {
 	if(COND_CS())
 	{
@@ -4113,7 +4113,7 @@ static void m68k_op_bcs_8(void)
 }
 
 
-static void m68k_op_bne_8(void)
+static void M68K_FAST_FUNC(m68k_op_bne_8)(void) /* In SRAM */
 {
 	if(COND_NE())
 	{
@@ -4125,7 +4125,7 @@ static void m68k_op_bne_8(void)
 }
 
 
-static void m68k_op_beq_8(void)
+static void M68K_FAST_FUNC(m68k_op_beq_8)(void) /* In SRAM */
 {
 	if(COND_EQ())
 	{
@@ -4161,7 +4161,7 @@ static void m68k_op_bvs_8(void)
 }
 
 
-static void m68k_op_bpl_8(void)
+static void M68K_FAST_FUNC(m68k_op_bpl_8)(void) /* In SRAM */
 {
 	if(COND_PL())
 	{
@@ -4173,7 +4173,7 @@ static void m68k_op_bpl_8(void)
 }
 
 
-static void m68k_op_bmi_8(void)
+static void M68K_FAST_FUNC(m68k_op_bmi_8)(void) /* In SRAM */
 {
 	if(COND_MI())
 	{
@@ -4185,7 +4185,7 @@ static void m68k_op_bmi_8(void)
 }
 
 
-static void m68k_op_bge_8(void)
+static void M68K_FAST_FUNC(m68k_op_bge_8)(void) /* In SRAM */
 {
 	if(COND_GE())
 	{
@@ -4197,7 +4197,7 @@ static void m68k_op_bge_8(void)
 }
 
 
-static void m68k_op_blt_8(void)
+static void M68K_FAST_FUNC(m68k_op_blt_8)(void) /* In SRAM */
 {
 	if(COND_LT())
 	{
@@ -4209,7 +4209,7 @@ static void m68k_op_blt_8(void)
 }
 
 
-static void m68k_op_bgt_8(void)
+static void M68K_FAST_FUNC(m68k_op_bgt_8)(void) /* In SRAM */
 {
 	if(COND_GT())
 	{
@@ -4221,7 +4221,7 @@ static void m68k_op_bgt_8(void)
 }
 
 
-static void m68k_op_ble_8(void)
+static void M68K_FAST_FUNC(m68k_op_ble_8)(void) /* In SRAM */
 {
 	if(COND_LE())
 	{
@@ -4293,7 +4293,7 @@ static void m68k_op_bcs_16(void)
 }
 
 
-static void m68k_op_bne_16(void)
+static void M68K_FAST_FUNC(m68k_op_bne_16)(void) /* In SRAM */
 {
 	if(COND_NE())
 	{
@@ -4308,7 +4308,7 @@ static void m68k_op_bne_16(void)
 }
 
 
-static void m68k_op_beq_16(void)
+static void M68K_FAST_FUNC(m68k_op_beq_16)(void) /* In SRAM */
 {
 	if(COND_EQ())
 	{
@@ -5162,7 +5162,7 @@ static void m68k_op_bclr_8_r_al(void)
 }
 
 
-static void m68k_op_bclr_32_s_d(void)
+static void M68K_FAST_FUNC(m68k_op_bclr_32_s_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint mask = 1 << (OPER_I_8() & 0x1f);
@@ -5172,7 +5172,7 @@ static void m68k_op_bclr_32_s_d(void)
 }
 
 
-static void m68k_op_bclr_8_s_ai(void)
+static void M68K_FAST_FUNC(m68k_op_bclr_8_s_ai)(void) /* In SRAM */
 {
 	uint mask = 1 << (OPER_I_8() & 7);
 	uint ea = EA_AY_AI_8();
@@ -8079,7 +8079,7 @@ static void m68k_op_bkpt(void)
 }
 
 
-static void m68k_op_bra_8(void)
+static void M68K_FAST_FUNC(m68k_op_bra_8)(void) /* In SRAM */
 {
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
 	m68ki_branch_8(MASK_OUT_ABOVE_8(REG_IR));
@@ -8088,7 +8088,7 @@ static void m68k_op_bra_8(void)
 }
 
 
-static void m68k_op_bra_16(void)
+static void M68K_FAST_FUNC(m68k_op_bra_16)(void) /* In SRAM */
 {
 	uint offset = OPER_I_16();
 	REG_PC -= 2;
@@ -8131,7 +8131,7 @@ static void m68k_op_bset_32_r_d(void)
 }
 
 
-static void m68k_op_bset_8_r_ai(void)
+static void M68K_FAST_FUNC(m68k_op_bset_8_r_ai)(void) /* In SRAM */
 {
 	uint ea = EA_AY_AI_8();
 	uint src = m68ki_read_8(ea);
@@ -8230,7 +8230,7 @@ static void m68k_op_bset_8_r_al(void)
 }
 
 
-static void m68k_op_bset_32_s_d(void)
+static void M68K_FAST_FUNC(m68k_op_bset_32_s_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint mask = 1 << (OPER_I_8() & 0x1f);
@@ -8240,7 +8240,7 @@ static void m68k_op_bset_32_s_d(void)
 }
 
 
-static void m68k_op_bset_8_s_ai(void)
+static void M68K_FAST_FUNC(m68k_op_bset_8_s_ai)(void) /* In SRAM */
 {
 	uint mask = 1 << (OPER_I_8() & 7);
 	uint ea = EA_AY_AI_8();
@@ -8317,7 +8317,7 @@ static void m68k_op_bset_8_s_ix(void)
 }
 
 
-static void m68k_op_bset_8_s_aw(void)
+static void M68K_FAST_FUNC(m68k_op_bset_8_s_aw)(void) /* In SRAM */
 {
 	uint mask = 1 << (OPER_I_8() & 7);
 	uint ea = EA_AW_8();
@@ -8339,7 +8339,7 @@ static void m68k_op_bset_8_s_al(void)
 }
 
 
-static void m68k_op_bsr_8(void)
+static void M68K_FAST_FUNC(m68k_op_bsr_8)(void) /* In SRAM */
 {
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
 	m68ki_push_32(REG_PC);
@@ -8347,7 +8347,7 @@ static void m68k_op_bsr_8(void)
 }
 
 
-static void m68k_op_bsr_16(void)
+static void M68K_FAST_FUNC(m68k_op_bsr_16)(void) /* In SRAM */
 {
 	uint offset = OPER_I_16();
 	m68ki_trace_t0();			   /* auto-disable (see m68kcpu.h) */
@@ -8455,7 +8455,7 @@ static void m68k_op_btst_8_r_i(void)
 }
 
 
-static void m68k_op_btst_32_s_d(void)
+static void M68K_FAST_FUNC(m68k_op_btst_32_s_d)(void) /* In SRAM */
 {
 	FLAG_Z = DY & (1 << (OPER_I_8() & 0x1f));
 }
@@ -8501,7 +8501,7 @@ static void m68k_op_btst_8_s_pd7(void)
 }
 
 
-static void m68k_op_btst_8_s_di(void)
+static void M68K_FAST_FUNC(m68k_op_btst_8_s_di)(void) /* In SRAM */
 {
 	uint bit = OPER_I_8() & 7;
 
@@ -10405,7 +10405,7 @@ static void m68k_op_clr_8_d(void)
 }
 
 
-static void m68k_op_clr_8_ai(void)
+static void M68K_FAST_FUNC(m68k_op_clr_8_ai)(void) /* In SRAM */
 {
 	m68ki_write_8(EA_AY_AI_8(), 0);
 
@@ -10460,7 +10460,7 @@ static void m68k_op_clr_8_pd7(void)
 }
 
 
-static void m68k_op_clr_8_di(void)
+static void M68K_FAST_FUNC(m68k_op_clr_8_di)(void) /* In SRAM */
 {
 	m68ki_write_8(EA_AY_DI_8(), 0);
 
@@ -10482,7 +10482,7 @@ static void m68k_op_clr_8_ix(void)
 }
 
 
-static void m68k_op_clr_8_aw(void)
+static void M68K_FAST_FUNC(m68k_op_clr_8_aw)(void) /* In SRAM */
 {
 	m68ki_write_8(EA_AW_8(), 0);
 
@@ -10504,7 +10504,7 @@ static void m68k_op_clr_8_al(void)
 }
 
 
-static void m68k_op_clr_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_clr_16_d)(void) /* In SRAM */
 {
 	DY &= 0xffff0000;
 
@@ -10515,7 +10515,7 @@ static void m68k_op_clr_16_d(void)
 }
 
 
-static void m68k_op_clr_16_ai(void)
+static void M68K_FAST_FUNC(m68k_op_clr_16_ai)(void) /* In SRAM */
 {
 	m68ki_write_16(EA_AY_AI_16(), 0);
 
@@ -10537,7 +10537,7 @@ static void m68k_op_clr_16_pi(void)
 }
 
 
-static void m68k_op_clr_16_pd(void)
+static void M68K_FAST_FUNC(m68k_op_clr_16_pd)(void) /* In SRAM */
 {
 	m68ki_write_16(EA_AY_PD_16(), 0);
 
@@ -10548,7 +10548,7 @@ static void m68k_op_clr_16_pd(void)
 }
 
 
-static void m68k_op_clr_16_di(void)
+static void M68K_FAST_FUNC(m68k_op_clr_16_di)(void) /* In SRAM */
 {
 	m68ki_write_16(EA_AY_DI_16(), 0);
 
@@ -10570,7 +10570,7 @@ static void m68k_op_clr_16_ix(void)
 }
 
 
-static void m68k_op_clr_16_aw(void)
+static void M68K_FAST_FUNC(m68k_op_clr_16_aw)(void) /* In SRAM */
 {
 	m68ki_write_16(EA_AW_16(), 0);
 
@@ -10592,7 +10592,7 @@ static void m68k_op_clr_16_al(void)
 }
 
 
-static void m68k_op_clr_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_clr_32_d)(void) /* In SRAM */
 {
 	DY = 0;
 
@@ -10603,7 +10603,7 @@ static void m68k_op_clr_32_d(void)
 }
 
 
-static void m68k_op_clr_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_clr_32_ai)(void) /* In SRAM */
 {
 	m68ki_write_32(EA_AY_AI_32(), 0);
 
@@ -10614,7 +10614,7 @@ static void m68k_op_clr_32_ai(void)
 }
 
 
-static void m68k_op_clr_32_pi(void)
+static void M68K_FAST_FUNC(m68k_op_clr_32_pi)(void) /* In SRAM */
 {
 	m68ki_write_32(EA_AY_PI_32(), 0);
 
@@ -10625,7 +10625,7 @@ static void m68k_op_clr_32_pi(void)
 }
 
 
-static void m68k_op_clr_32_pd(void)
+static void M68K_FAST_FUNC(m68k_op_clr_32_pd)(void) /* In SRAM */
 {
 	m68ki_write_32(EA_AY_PD_32(), 0);
 
@@ -10636,7 +10636,7 @@ static void m68k_op_clr_32_pd(void)
 }
 
 
-static void m68k_op_clr_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_clr_32_di)(void) /* In SRAM */
 {
 	m68ki_write_32(EA_AY_DI_32(), 0);
 
@@ -10849,7 +10849,7 @@ static void m68k_op_cmp_8_i(void)
 }
 
 
-static void m68k_op_cmp_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_16_d)(void) /* In SRAM */
 {
 	uint src = MASK_OUT_ABOVE_16(DY);
 	uint dst = MASK_OUT_ABOVE_16(DX);
@@ -10875,7 +10875,7 @@ static void m68k_op_cmp_16_a(void)
 }
 
 
-static void m68k_op_cmp_16_ai(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_16_ai)(void) /* In SRAM */
 {
 	uint src = OPER_AY_AI_16();
 	uint dst = MASK_OUT_ABOVE_16(DX);
@@ -10888,7 +10888,7 @@ static void m68k_op_cmp_16_ai(void)
 }
 
 
-static void m68k_op_cmp_16_pi(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_16_pi)(void) /* In SRAM */
 {
 	uint src = OPER_AY_PI_16();
 	uint dst = MASK_OUT_ABOVE_16(DX);
@@ -10914,7 +10914,7 @@ static void m68k_op_cmp_16_pd(void)
 }
 
 
-static void m68k_op_cmp_16_di(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_16_di)(void) /* In SRAM */
 {
 	uint src = OPER_AY_DI_16();
 	uint dst = MASK_OUT_ABOVE_16(DX);
@@ -11005,7 +11005,7 @@ static void m68k_op_cmp_16_i(void)
 }
 
 
-static void m68k_op_cmp_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_32_d)(void) /* In SRAM */
 {
 	uint src = DY;
 	uint dst = DX;
@@ -11031,7 +11031,7 @@ static void m68k_op_cmp_32_a(void)
 }
 
 
-static void m68k_op_cmp_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_32_ai)(void) /* In SRAM */
 {
 	uint src = OPER_AY_AI_32();
 	uint dst = DX;
@@ -11070,7 +11070,7 @@ static void m68k_op_cmp_32_pd(void)
 }
 
 
-static void m68k_op_cmp_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_32_di)(void) /* In SRAM */
 {
 	uint src = OPER_AY_DI_32();
 	uint dst = DX;
@@ -11096,7 +11096,7 @@ static void m68k_op_cmp_32_ix(void)
 }
 
 
-static void m68k_op_cmp_32_aw(void)
+static void M68K_FAST_FUNC(m68k_op_cmp_32_aw)(void) /* In SRAM */
 {
 	uint src = OPER_AW_32();
 	uint dst = DX;
@@ -11343,7 +11343,7 @@ static void m68k_op_cmpa_32_a(void)
 }
 
 
-static void m68k_op_cmpa_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_cmpa_32_ai)(void) /* In SRAM */
 {
 	uint src = OPER_AY_AI_32();
 	uint dst = AX;
@@ -11408,7 +11408,7 @@ static void m68k_op_cmpa_32_ix(void)
 }
 
 
-static void m68k_op_cmpa_32_aw(void)
+static void M68K_FAST_FUNC(m68k_op_cmpa_32_aw)(void) /* In SRAM */
 {
 	uint src = OPER_AW_32();
 	uint dst = AX;
@@ -11473,7 +11473,7 @@ static void m68k_op_cmpa_32_i(void)
 }
 
 
-static void m68k_op_cmpi_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_cmpi_8_d)(void) /* In SRAM */
 {
 	uint src = OPER_I_8();
 	uint dst = MASK_OUT_ABOVE_8(DY);
@@ -11551,7 +11551,7 @@ static void m68k_op_cmpi_8_pd7(void)
 }
 
 
-static void m68k_op_cmpi_8_di(void)
+static void M68K_FAST_FUNC(m68k_op_cmpi_8_di)(void) /* In SRAM */
 {
 	uint src = OPER_I_8();
 	uint dst = OPER_AY_DI_8();
@@ -11639,7 +11639,7 @@ static void m68k_op_cmpi_8_pcix(void)
 }
 
 
-static void m68k_op_cmpi_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_cmpi_16_d)(void) /* In SRAM */
 {
 	uint src = OPER_I_16();
 	uint dst = MASK_OUT_ABOVE_16(DY);
@@ -11652,7 +11652,7 @@ static void m68k_op_cmpi_16_d(void)
 }
 
 
-static void m68k_op_cmpi_16_ai(void)
+static void M68K_FAST_FUNC(m68k_op_cmpi_16_ai)(void) /* In SRAM */
 {
 	uint src = OPER_I_16();
 	uint dst = OPER_AY_AI_16();
@@ -11691,7 +11691,7 @@ static void m68k_op_cmpi_16_pd(void)
 }
 
 
-static void m68k_op_cmpi_16_di(void)
+static void M68K_FAST_FUNC(m68k_op_cmpi_16_di)(void) /* In SRAM */
 {
 	uint src = OPER_I_16();
 	uint dst = OPER_AY_DI_16();
@@ -11985,7 +11985,7 @@ static void m68k_op_cmpm_16(void)
 }
 
 
-static void m68k_op_cmpm_32(void)
+static void M68K_FAST_FUNC(m68k_op_cmpm_32)(void) /* In SRAM */
 {
 	uint src = OPER_AY_PI_32();
 	uint dst = OPER_AX_PI_32();
@@ -12071,7 +12071,7 @@ static void m68k_op_dbt_16(void)
 }
 
 
-static void m68k_op_dbf_16(void)
+static void M68K_FAST_FUNC(m68k_op_dbf_16)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint res = MASK_OUT_ABOVE_16(*r_dst - 1);
@@ -12216,7 +12216,7 @@ static void m68k_op_dbne_16(void)
 }
 
 
-static void m68k_op_dbeq_16(void)
+static void M68K_FAST_FUNC(m68k_op_dbeq_16)(void) /* In SRAM */
 {
 	if(COND_NOT_EQ())
 	{
@@ -15821,7 +15821,7 @@ static void m68k_op_eor_32_al(void)
 }
 
 
-static void m68k_op_eori_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_eori_8_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_8(DY ^= OPER_I_8());
 
@@ -16248,7 +16248,7 @@ static void m68k_op_exg_32_da(void)
 }
 
 
-static void m68k_op_ext_16(void)
+static void M68K_FAST_FUNC(m68k_op_ext_16)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 
@@ -16261,7 +16261,7 @@ static void m68k_op_ext_16(void)
 }
 
 
-static void m68k_op_ext_32(void)
+static void M68K_FAST_FUNC(m68k_op_ext_32)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 
@@ -16298,7 +16298,7 @@ static void m68k_op_illegal(void)
 }
 
 
-static void m68k_op_jmp_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_jmp_32_ai)(void) /* In SRAM */
 {
 	m68ki_jump(EA_AY_AI_32());
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16334,7 +16334,7 @@ static void m68k_op_jmp_32_aw(void)
 }
 
 
-static void m68k_op_jmp_32_al(void)
+static void M68K_FAST_FUNC(m68k_op_jmp_32_al)(void) /* In SRAM */
 {
 	m68ki_jump(EA_AL_32());
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16343,7 +16343,7 @@ static void m68k_op_jmp_32_al(void)
 }
 
 
-static void m68k_op_jmp_32_pcdi(void)
+static void M68K_FAST_FUNC(m68k_op_jmp_32_pcdi)(void) /* In SRAM */
 {
 	m68ki_jump(EA_PCDI_32());
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16361,7 +16361,7 @@ static void m68k_op_jmp_32_pcix(void)
 }
 
 
-static void m68k_op_jsr_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_jsr_32_ai)(void) /* In SRAM */
 {
 	uint ea = EA_AY_AI_32();
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16370,7 +16370,7 @@ static void m68k_op_jsr_32_ai(void)
 }
 
 
-static void m68k_op_jsr_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_jsr_32_di)(void) /* In SRAM */
 {
 	uint ea = EA_AY_DI_32();
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16406,7 +16406,7 @@ static void m68k_op_jsr_32_al(void)
 }
 
 
-static void m68k_op_jsr_32_pcdi(void)
+static void M68K_FAST_FUNC(m68k_op_jsr_32_pcdi)(void) /* In SRAM */
 {
 	uint ea = EA_PCDI_32();
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
@@ -16430,7 +16430,7 @@ static void m68k_op_lea_32_ai(void)
 }
 
 
-static void m68k_op_lea_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_lea_32_di)(void) /* In SRAM */
 {
 	AX = EA_AY_DI_32();
 }
@@ -16442,7 +16442,7 @@ static void m68k_op_lea_32_ix(void)
 }
 
 
-static void m68k_op_lea_32_aw(void)
+static void M68K_FAST_FUNC(m68k_op_lea_32_aw)(void) /* In SRAM */
 {
 	AX = EA_AW_32();
 }
@@ -16454,7 +16454,7 @@ static void m68k_op_lea_32_al(void)
 }
 
 
-static void m68k_op_lea_32_pcdi(void)
+static void M68K_FAST_FUNC(m68k_op_lea_32_pcdi)(void) /* In SRAM */
 {
 	AX = EA_PCDI_32();
 }
@@ -16474,7 +16474,7 @@ static void m68k_op_link_16_a7(void)
 }
 
 
-static void m68k_op_link_16(void)
+static void M68K_FAST_FUNC(m68k_op_link_16)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 
@@ -16512,7 +16512,7 @@ static void m68k_op_link_32(void)
 }
 
 
-static void m68k_op_lsr_8_s(void)
+static void M68K_FAST_FUNC(m68k_op_lsr_8_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -16531,7 +16531,7 @@ static void m68k_op_lsr_8_s(void)
 }
 
 
-static void m68k_op_lsr_16_s(void)
+static void M68K_FAST_FUNC(m68k_op_lsr_16_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -16806,7 +16806,7 @@ static void m68k_op_lsl_8_s(void)
 }
 
 
-static void m68k_op_lsl_16_s(void)
+static void M68K_FAST_FUNC(m68k_op_lsl_16_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -17076,7 +17076,7 @@ static void m68k_op_move_8_d_d(void)
 }
 
 
-static void m68k_op_move_8_d_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_d_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_8();
 	uint* r_dst = &DX;
@@ -17090,7 +17090,7 @@ static void m68k_op_move_8_d_ai(void)
 }
 
 
-static void m68k_op_move_8_d_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_d_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_8();
 	uint* r_dst = &DX;
@@ -17104,7 +17104,7 @@ static void m68k_op_move_8_d_pi(void)
 }
 
 
-static void m68k_op_move_8_d_pi7(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_d_pi7)(void) /* In SRAM */
 {
 	uint res = OPER_A7_PI_8();
 	uint* r_dst = &DX;
@@ -17146,7 +17146,7 @@ static void m68k_op_move_8_d_pd7(void)
 }
 
 
-static void m68k_op_move_8_d_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_d_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_8();
 	uint* r_dst = &DX;
@@ -17160,7 +17160,7 @@ static void m68k_op_move_8_d_di(void)
 }
 
 
-static void m68k_op_move_8_d_ix(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_d_ix)(void) /* In SRAM */
 {
 	uint res = OPER_AY_IX_8();
 	uint* r_dst = &DX;
@@ -17244,7 +17244,7 @@ static void m68k_op_move_8_d_i(void)
 }
 
 
-static void m68k_op_move_8_ai_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_ai_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_8(DY);
 	uint ea = EA_AX_AI_8();
@@ -17412,7 +17412,7 @@ static void m68k_op_move_8_ai_pcix(void)
 }
 
 
-static void m68k_op_move_8_ai_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_ai_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_8();
 	uint ea = EA_AX_AI_8();
@@ -18154,7 +18154,7 @@ static void m68k_op_move_8_pd_i(void)
 }
 
 
-static void m68k_op_move_8_di_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_di_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_8(DY);
 	uint ea = EA_AX_DI_8();
@@ -18238,7 +18238,7 @@ static void m68k_op_move_8_di_pd7(void)
 }
 
 
-static void m68k_op_move_8_di_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_di_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_8();
 	uint ea = EA_AX_DI_8();
@@ -18266,7 +18266,7 @@ static void m68k_op_move_8_di_ix(void)
 }
 
 
-static void m68k_op_move_8_di_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_8_di_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_8();
 	uint ea = EA_AX_DI_8();
@@ -18882,7 +18882,7 @@ static void m68k_op_move_8_al_i(void)
 }
 
 
-static void m68k_op_move_16_d_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 	uint* r_dst = &DX;
@@ -18910,7 +18910,7 @@ static void m68k_op_move_16_d_a(void)
 }
 
 
-static void m68k_op_move_16_d_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_16();
 	uint* r_dst = &DX;
@@ -18924,7 +18924,7 @@ static void m68k_op_move_16_d_ai(void)
 }
 
 
-static void m68k_op_move_16_d_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_16();
 	uint* r_dst = &DX;
@@ -18952,7 +18952,7 @@ static void m68k_op_move_16_d_pd(void)
 }
 
 
-static void m68k_op_move_16_d_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_16();
 	uint* r_dst = &DX;
@@ -18966,7 +18966,7 @@ static void m68k_op_move_16_d_di(void)
 }
 
 
-static void m68k_op_move_16_d_ix(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_ix)(void) /* In SRAM */
 {
 	uint res = OPER_AY_IX_16();
 	uint* r_dst = &DX;
@@ -18980,7 +18980,7 @@ static void m68k_op_move_16_d_ix(void)
 }
 
 
-static void m68k_op_move_16_d_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_d_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_16();
 	uint* r_dst = &DX;
@@ -19050,7 +19050,7 @@ static void m68k_op_move_16_d_i(void)
 }
 
 
-static void m68k_op_move_16_ai_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_ai_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 	uint ea = EA_AX_AI_16();
@@ -19218,7 +19218,7 @@ static void m68k_op_move_16_ai_i(void)
 }
 
 
-static void m68k_op_move_16_pi_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_pi_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 	uint ea = EA_AX_PI_16();
@@ -19288,7 +19288,7 @@ static void m68k_op_move_16_pi_pd(void)
 }
 
 
-static void m68k_op_move_16_pi_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_pi_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_16();
 	uint ea = EA_AX_PI_16();
@@ -19372,7 +19372,7 @@ static void m68k_op_move_16_pi_pcix(void)
 }
 
 
-static void m68k_op_move_16_pi_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_pi_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_16();
 	uint ea = EA_AX_PI_16();
@@ -19386,7 +19386,7 @@ static void m68k_op_move_16_pi_i(void)
 }
 
 
-static void m68k_op_move_16_pd_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_pd_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 	uint ea = EA_AX_PD_16();
@@ -19540,7 +19540,7 @@ static void m68k_op_move_16_pd_pcix(void)
 }
 
 
-static void m68k_op_move_16_pd_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_pd_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_16();
 	uint ea = EA_AX_PD_16();
@@ -19554,7 +19554,7 @@ static void m68k_op_move_16_pd_i(void)
 }
 
 
-static void m68k_op_move_16_di_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_di_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 	uint ea = EA_AX_DI_16();
@@ -19596,7 +19596,7 @@ static void m68k_op_move_16_di_ai(void)
 }
 
 
-static void m68k_op_move_16_di_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_di_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_16();
 	uint ea = EA_AX_DI_16();
@@ -19708,7 +19708,7 @@ static void m68k_op_move_16_di_pcix(void)
 }
 
 
-static void m68k_op_move_16_di_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_di_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_16();
 	uint ea = EA_AX_DI_16();
@@ -20226,7 +20226,7 @@ static void m68k_op_move_16_al_i(void)
 }
 
 
-static void m68k_op_move_32_d_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_d)(void) /* In SRAM */
 {
 	uint res = DY;
 	uint* r_dst = &DX;
@@ -20240,7 +20240,7 @@ static void m68k_op_move_32_d_d(void)
 }
 
 
-static void m68k_op_move_32_d_a(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_a)(void) /* In SRAM */
 {
 	uint res = AY;
 	uint* r_dst = &DX;
@@ -20254,7 +20254,7 @@ static void m68k_op_move_32_d_a(void)
 }
 
 
-static void m68k_op_move_32_d_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 	uint* r_dst = &DX;
@@ -20268,7 +20268,7 @@ static void m68k_op_move_32_d_ai(void)
 }
 
 
-static void m68k_op_move_32_d_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_32();
 	uint* r_dst = &DX;
@@ -20296,7 +20296,7 @@ static void m68k_op_move_32_d_pd(void)
 }
 
 
-static void m68k_op_move_32_d_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_32();
 	uint* r_dst = &DX;
@@ -20324,7 +20324,7 @@ static void m68k_op_move_32_d_ix(void)
 }
 
 
-static void m68k_op_move_32_d_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_d_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_32();
 	uint* r_dst = &DX;
@@ -20394,7 +20394,7 @@ static void m68k_op_move_32_d_i(void)
 }
 
 
-static void m68k_op_move_32_ai_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_d)(void) /* In SRAM */
 {
 	uint res = DY;
 	uint ea = EA_AX_AI_32();
@@ -20408,7 +20408,7 @@ static void m68k_op_move_32_ai_d(void)
 }
 
 
-static void m68k_op_move_32_ai_a(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_a)(void) /* In SRAM */
 {
 	uint res = AY;
 	uint ea = EA_AX_AI_32();
@@ -20422,7 +20422,7 @@ static void m68k_op_move_32_ai_a(void)
 }
 
 
-static void m68k_op_move_32_ai_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 	uint ea = EA_AX_AI_32();
@@ -20436,7 +20436,7 @@ static void m68k_op_move_32_ai_ai(void)
 }
 
 
-static void m68k_op_move_32_ai_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_32();
 	uint ea = EA_AX_AI_32();
@@ -20464,7 +20464,7 @@ static void m68k_op_move_32_ai_pd(void)
 }
 
 
-static void m68k_op_move_32_ai_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_32();
 	uint ea = EA_AX_AI_32();
@@ -20492,7 +20492,7 @@ static void m68k_op_move_32_ai_ix(void)
 }
 
 
-static void m68k_op_move_32_ai_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_ai_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_32();
 	uint ea = EA_AX_AI_32();
@@ -20562,7 +20562,7 @@ static void m68k_op_move_32_ai_i(void)
 }
 
 
-static void m68k_op_move_32_pi_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pi_d)(void) /* In SRAM */
 {
 	uint res = DY;
 	uint ea = EA_AX_PI_32();
@@ -20590,7 +20590,7 @@ static void m68k_op_move_32_pi_a(void)
 }
 
 
-static void m68k_op_move_32_pi_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pi_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 	uint ea = EA_AX_PI_32();
@@ -20604,7 +20604,7 @@ static void m68k_op_move_32_pi_ai(void)
 }
 
 
-static void m68k_op_move_32_pi_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pi_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_32();
 	uint ea = EA_AX_PI_32();
@@ -20730,7 +20730,7 @@ static void m68k_op_move_32_pi_i(void)
 }
 
 
-static void m68k_op_move_32_pd_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_d)(void) /* In SRAM */
 {
 	uint res = DY;
 	uint ea = EA_AX_PD_32();
@@ -20745,7 +20745,7 @@ static void m68k_op_move_32_pd_d(void)
 }
 
 
-static void m68k_op_move_32_pd_a(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_a)(void) /* In SRAM */
 {
 	uint res = AY;
 	uint ea = EA_AX_PD_32();
@@ -20760,7 +20760,7 @@ static void m68k_op_move_32_pd_a(void)
 }
 
 
-static void m68k_op_move_32_pd_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 	uint ea = EA_AX_PD_32();
@@ -20775,7 +20775,7 @@ static void m68k_op_move_32_pd_ai(void)
 }
 
 
-static void m68k_op_move_32_pd_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_32();
 	uint ea = EA_AX_PD_32();
@@ -20805,7 +20805,7 @@ static void m68k_op_move_32_pd_pd(void)
 }
 
 
-static void m68k_op_move_32_pd_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_32();
 	uint ea = EA_AX_PD_32();
@@ -20820,7 +20820,7 @@ static void m68k_op_move_32_pd_di(void)
 }
 
 
-static void m68k_op_move_32_pd_ix(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_ix)(void) /* In SRAM */
 {
 	uint res = OPER_AY_IX_32();
 	uint ea = EA_AX_PD_32();
@@ -20835,7 +20835,7 @@ static void m68k_op_move_32_pd_ix(void)
 }
 
 
-static void m68k_op_move_32_pd_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_32();
 	uint ea = EA_AX_PD_32();
@@ -20895,7 +20895,7 @@ static void m68k_op_move_32_pd_pcix(void)
 }
 
 
-static void m68k_op_move_32_pd_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_pd_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_32();
 	uint ea = EA_AX_PD_32();
@@ -20910,7 +20910,7 @@ static void m68k_op_move_32_pd_i(void)
 }
 
 
-static void m68k_op_move_32_di_d(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_d)(void) /* In SRAM */
 {
 	uint res = DY;
 	uint ea = EA_AX_DI_32();
@@ -20924,7 +20924,7 @@ static void m68k_op_move_32_di_d(void)
 }
 
 
-static void m68k_op_move_32_di_a(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_a)(void) /* In SRAM */
 {
 	uint res = AY;
 	uint ea = EA_AX_DI_32();
@@ -20938,7 +20938,7 @@ static void m68k_op_move_32_di_a(void)
 }
 
 
-static void m68k_op_move_32_di_ai(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 	uint ea = EA_AX_DI_32();
@@ -20952,7 +20952,7 @@ static void m68k_op_move_32_di_ai(void)
 }
 
 
-static void m68k_op_move_32_di_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_32();
 	uint ea = EA_AX_DI_32();
@@ -20980,7 +20980,7 @@ static void m68k_op_move_32_di_pd(void)
 }
 
 
-static void m68k_op_move_32_di_di(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_32();
 	uint ea = EA_AX_DI_32();
@@ -20994,7 +20994,7 @@ static void m68k_op_move_32_di_di(void)
 }
 
 
-static void m68k_op_move_32_di_ix(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_ix)(void) /* In SRAM */
 {
 	uint res = OPER_AY_IX_32();
 	uint ea = EA_AX_DI_32();
@@ -21008,7 +21008,7 @@ static void m68k_op_move_32_di_ix(void)
 }
 
 
-static void m68k_op_move_32_di_aw(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_32();
 	uint ea = EA_AX_DI_32();
@@ -21064,7 +21064,7 @@ static void m68k_op_move_32_di_pcix(void)
 }
 
 
-static void m68k_op_move_32_di_i(void)
+static void M68K_FAST_FUNC(m68k_op_move_32_di_i)(void) /* In SRAM */
 {
 	uint res = OPER_I_32();
 	uint ea = EA_AX_DI_32();
@@ -21654,25 +21654,25 @@ static void m68k_op_movea_16_i(void)
 }
 
 
-static void m68k_op_movea_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_d)(void) /* In SRAM */
 {
 	AX = DY;
 }
 
 
-static void m68k_op_movea_32_a(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_a)(void) /* In SRAM */
 {
 	AX = AY;
 }
 
 
-static void m68k_op_movea_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_ai)(void) /* In SRAM */
 {
 	AX = OPER_AY_AI_32();
 }
 
 
-static void m68k_op_movea_32_pi(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_pi)(void) /* In SRAM */
 {
 	AX = OPER_AY_PI_32();
 }
@@ -21684,19 +21684,19 @@ static void m68k_op_movea_32_pd(void)
 }
 
 
-static void m68k_op_movea_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_di)(void) /* In SRAM */
 {
 	AX = OPER_AY_DI_32();
 }
 
 
-static void m68k_op_movea_32_ix(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_ix)(void) /* In SRAM */
 {
 	AX = OPER_AY_IX_32();
 }
 
 
-static void m68k_op_movea_32_aw(void)
+static void M68K_FAST_FUNC(m68k_op_movea_32_aw)(void) /* In SRAM */
 {
 	AX = OPER_AW_32();
 }
@@ -21915,7 +21915,7 @@ static void m68k_op_move_16_frs_pi(void)
 }
 
 
-static void m68k_op_move_16_frs_pd(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_frs_pd)(void) /* In SRAM */
 {
 	if(CPU_TYPE_IS_000(CPU_TYPE) || FLAG_S)	/* NS990408 */
 	{
@@ -21999,7 +21999,7 @@ static void m68k_op_move_16_tos_ai(void)
 }
 
 
-static void m68k_op_move_16_tos_pi(void)
+static void M68K_FAST_FUNC(m68k_op_move_16_tos_pi)(void) /* In SRAM */
 {
 	if(FLAG_S)
 	{
@@ -22539,7 +22539,7 @@ static void m68k_op_movem_16_re_al(void)
 }
 
 
-static void m68k_op_movem_32_re_pd(void)
+static void M68K_FAST_FUNC(m68k_op_movem_32_re_pd)(void) /* In SRAM */
 {
 	uint i = 0;
 	uint register_list = OPER_I_16();
@@ -22808,7 +22808,7 @@ static void m68k_op_movem_16_er_al(void)
 }
 
 
-static void m68k_op_movem_32_er_pi(void)
+static void M68K_FAST_FUNC(m68k_op_movem_32_er_pi)(void) /* In SRAM */
 {
 	uint i = 0;
 	uint register_list = OPER_I_16();
@@ -23771,7 +23771,7 @@ static void m68k_op_moves_32_al(void)
 }
 
 
-static void m68k_op_moveq_32(void)
+static void M68K_FAST_FUNC(m68k_op_moveq_32)(void) /* In SRAM */
 {
 	uint res = DX = MAKE_INT_8(MASK_OUT_ABOVE_8(REG_IR));
 
@@ -23899,7 +23899,7 @@ static void m68k_op_muls_16_pd(void)
 }
 
 
-static void m68k_op_muls_16_di(void)
+static void M68K_FAST_FUNC(m68k_op_muls_16_di)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint x = MAKE_INT_16(OPER_AY_DI_16());
@@ -24074,7 +24074,7 @@ static void m68k_op_muls_16_i(void)
 }
 
 
-static void m68k_op_mulu_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_mulu_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint x = MASK_OUT_ABOVE_16(DY);
@@ -26191,7 +26191,7 @@ static void m68k_op_neg_8_al(void)
 }
 
 
-static void m68k_op_neg_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_neg_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint res = 0 - MASK_OUT_ABOVE_16(*r_dst);
@@ -27014,7 +27014,7 @@ static void m68k_op_not_8_al(void)
 }
 
 
-static void m68k_op_not_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_not_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint res = MASK_OUT_ABOVE_16(~*r_dst);
@@ -27302,7 +27302,7 @@ static void m68k_op_or_8_er_pd7(void)
 }
 
 
-static void m68k_op_or_8_er_di(void)
+static void M68K_FAST_FUNC(m68k_op_or_8_er_di)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_8((DX |= OPER_AY_DI_8()));
 
@@ -28327,7 +28327,7 @@ static void m68k_op_ori_16_toc(void)
 }
 
 
-static void m68k_op_ori_16_tos(void)
+static void M68K_FAST_FUNC(m68k_op_ori_16_tos)(void) /* In SRAM */
 {
 	if(FLAG_S)
 	{
@@ -28430,7 +28430,7 @@ static void m68k_op_pea_32_ai(void)
 }
 
 
-static void m68k_op_pea_32_di(void)
+static void M68K_FAST_FUNC(m68k_op_pea_32_di)(void) /* In SRAM */
 {
 	uint ea = EA_AY_DI_32();
 
@@ -28438,7 +28438,7 @@ static void m68k_op_pea_32_di(void)
 }
 
 
-static void m68k_op_pea_32_ix(void)
+static void M68K_FAST_FUNC(m68k_op_pea_32_ix)(void) /* In SRAM */
 {
 	uint ea = EA_AY_IX_32();
 
@@ -28446,7 +28446,7 @@ static void m68k_op_pea_32_ix(void)
 }
 
 
-static void m68k_op_pea_32_aw(void)
+static void M68K_FAST_FUNC(m68k_op_pea_32_aw)(void) /* In SRAM */
 {
 	uint ea = EA_AW_32();
 
@@ -28514,7 +28514,7 @@ static void m68k_op_reset(void)
 }
 
 
-static void m68k_op_ror_8_s(void)
+static void M68K_FAST_FUNC(m68k_op_ror_8_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint orig_shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -28778,7 +28778,7 @@ static void m68k_op_rol_8_s(void)
 }
 
 
-static void m68k_op_rol_16_s(void)
+static void M68K_FAST_FUNC(m68k_op_rol_16_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -29345,7 +29345,7 @@ static void m68k_op_roxr_16_al(void)
 }
 
 
-static void m68k_op_roxl_8_s(void)
+static void M68K_FAST_FUNC(m68k_op_roxl_8_s)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint shift = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -29821,7 +29821,7 @@ static void m68k_op_rtr_32(void)
 }
 
 
-static void m68k_op_rts_32(void)
+static void M68K_FAST_FUNC(m68k_op_rts_32)(void) /* In SRAM */
 {
 	m68ki_trace_t0();				   /* auto-disable (see m68kcpu.h) */
 	m68ki_jump(m68ki_pull_32());
@@ -30138,7 +30138,7 @@ static void m68k_op_sne_8_d(void)
 }
 
 
-static void m68k_op_seq_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_seq_8_d)(void) /* In SRAM */
 {
 	if(COND_EQ())
 	{
@@ -30222,7 +30222,7 @@ static void m68k_op_slt_8_d(void)
 }
 
 
-static void m68k_op_sgt_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_sgt_8_d)(void) /* In SRAM */
 {
 	if(COND_GT())
 	{
@@ -31308,7 +31308,7 @@ static void m68k_op_sub_16_er_pd(void)
 }
 
 
-static void m68k_op_sub_16_er_di(void)
+static void M68K_FAST_FUNC(m68k_op_sub_16_er_di)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = OPER_AY_DI_16();
@@ -31420,7 +31420,7 @@ static void m68k_op_sub_16_er_i(void)
 }
 
 
-static void m68k_op_sub_32_er_d(void)
+static void M68K_FAST_FUNC(m68k_op_sub_32_er_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = DY;
@@ -31436,7 +31436,7 @@ static void m68k_op_sub_32_er_d(void)
 }
 
 
-static void m68k_op_sub_32_er_a(void)
+static void M68K_FAST_FUNC(m68k_op_sub_32_er_a)(void) /* In SRAM */
 {
 	uint* r_dst = &DX;
 	uint src = AY;
@@ -32094,7 +32094,7 @@ static void m68k_op_suba_32_d(void)
 }
 
 
-static void m68k_op_suba_32_a(void)
+static void M68K_FAST_FUNC(m68k_op_suba_32_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AX;
 
@@ -32768,7 +32768,7 @@ static void m68k_op_subq_8_al(void)
 }
 
 
-static void m68k_op_subq_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_subq_16_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -32784,7 +32784,7 @@ static void m68k_op_subq_16_d(void)
 }
 
 
-static void m68k_op_subq_16_a(void)
+static void M68K_FAST_FUNC(m68k_op_subq_16_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 
@@ -32904,7 +32904,7 @@ static void m68k_op_subq_16_al(void)
 }
 
 
-static void m68k_op_subq_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_subq_32_d)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 	uint src = (((REG_IR >> 9) - 1) & 7) + 1;
@@ -32920,7 +32920,7 @@ static void m68k_op_subq_32_d(void)
 }
 
 
-static void m68k_op_subq_32_a(void)
+static void M68K_FAST_FUNC(m68k_op_subq_32_a)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 
@@ -33202,7 +33202,7 @@ static void m68k_op_subx_32_mm(void)
 }
 
 
-static void m68k_op_swap_32(void)
+static void M68K_FAST_FUNC(m68k_op_swap_32)(void) /* In SRAM */
 {
 	uint* r_dst = &DY;
 
@@ -34131,7 +34131,7 @@ static void m68k_op_trapv(void)
 }
 
 
-static void m68k_op_tst_8_d(void)
+static void M68K_FAST_FUNC(m68k_op_tst_8_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_8(DY);
 
@@ -34142,7 +34142,7 @@ static void m68k_op_tst_8_d(void)
 }
 
 
-static void m68k_op_tst_8_ai(void)
+static void M68K_FAST_FUNC(m68k_op_tst_8_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_8();
 
@@ -34164,7 +34164,7 @@ static void m68k_op_tst_8_pi(void)
 }
 
 
-static void m68k_op_tst_8_pi7(void)
+static void M68K_FAST_FUNC(m68k_op_tst_8_pi7)(void) /* In SRAM */
 {
 	uint res = OPER_A7_PI_8();
 
@@ -34197,7 +34197,7 @@ static void m68k_op_tst_8_pd7(void)
 }
 
 
-static void m68k_op_tst_8_di(void)
+static void M68K_FAST_FUNC(m68k_op_tst_8_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_8();
 
@@ -34219,7 +34219,7 @@ static void m68k_op_tst_8_ix(void)
 }
 
 
-static void m68k_op_tst_8_aw(void)
+static void M68K_FAST_FUNC(m68k_op_tst_8_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_8();
 
@@ -34289,7 +34289,7 @@ static void m68k_op_tst_8_i(void)
 }
 
 
-static void m68k_op_tst_16_d(void)
+static void M68K_FAST_FUNC(m68k_op_tst_16_d)(void) /* In SRAM */
 {
 	uint res = MASK_OUT_ABOVE_16(DY);
 
@@ -34316,7 +34316,7 @@ static void m68k_op_tst_16_a(void)
 }
 
 
-static void m68k_op_tst_16_ai(void)
+static void M68K_FAST_FUNC(m68k_op_tst_16_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_16();
 
@@ -34327,7 +34327,7 @@ static void m68k_op_tst_16_ai(void)
 }
 
 
-static void m68k_op_tst_16_pi(void)
+static void M68K_FAST_FUNC(m68k_op_tst_16_pi)(void) /* In SRAM */
 {
 	uint res = OPER_AY_PI_16();
 
@@ -34349,7 +34349,7 @@ static void m68k_op_tst_16_pd(void)
 }
 
 
-static void m68k_op_tst_16_di(void)
+static void M68K_FAST_FUNC(m68k_op_tst_16_di)(void) /* In SRAM */
 {
 	uint res = OPER_AY_DI_16();
 
@@ -34371,7 +34371,7 @@ static void m68k_op_tst_16_ix(void)
 }
 
 
-static void m68k_op_tst_16_aw(void)
+static void M68K_FAST_FUNC(m68k_op_tst_16_aw)(void) /* In SRAM */
 {
 	uint res = OPER_AW_16();
 
@@ -34441,7 +34441,7 @@ static void m68k_op_tst_16_i(void)
 }
 
 
-static void m68k_op_tst_32_d(void)
+static void M68K_FAST_FUNC(m68k_op_tst_32_d)(void) /* In SRAM */
 {
 	uint res = DY;
 
@@ -34468,7 +34468,7 @@ static void m68k_op_tst_32_a(void)
 }
 
 
-static void m68k_op_tst_32_ai(void)
+static void M68K_FAST_FUNC(m68k_op_tst_32_ai)(void) /* In SRAM */
 {
 	uint res = OPER_AY_AI_32();
 
@@ -34599,7 +34599,7 @@ static void m68k_op_unlk_32_a7(void)
 }
 
 
-static void m68k_op_unlk_32(void)
+static void M68K_FAST_FUNC(m68k_op_unlk_32)(void) /* In SRAM */
 {
 	uint* r_dst = &AY;
 

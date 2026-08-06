@@ -90,7 +90,7 @@ const char *const m68ki_cpu_names[] =
 #endif /* M68K_LOG_ENABLE */
 
 /* The CPU core */
-m68ki_cpu_core m68ki_cpu = {0};
+m68ki_cpu_core m68ki_cpu __attribute__((aligned(8))) = {0};
 
 #if M68K_EMULATE_ADDRESS_ERROR
 #ifdef _BSD_SETJMP_H
@@ -109,7 +109,7 @@ jmp_buf m68ki_bus_error_jmp_buf;
 #endif
 
 /* Used by shift & rotate instructions */
-const uint8 m68ki_shift_8_table[65] =
+const uint8 __not_in_flash("m68k_shift_tables") __attribute__((aligned(4))) m68ki_shift_8_table[65] =
 {
 	0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -118,7 +118,7 @@ const uint8 m68ki_shift_8_table[65] =
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff
 };
-const uint16 m68ki_shift_16_table[65] =
+const uint16 __not_in_flash("m68k_shift_tables") __attribute__((aligned(4))) m68ki_shift_16_table[65] =
 {
 	0x0000, 0x8000, 0xc000, 0xe000, 0xf000, 0xf800, 0xfc00, 0xfe00, 0xff00,
 	0xff80, 0xffc0, 0xffe0, 0xfff0, 0xfff8, 0xfffc, 0xfffe, 0xffff, 0xffff,
@@ -129,7 +129,7 @@ const uint16 m68ki_shift_16_table[65] =
 	0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff,
 	0xffff, 0xffff
 };
-const uint m68ki_shift_32_table[65] =
+const uint __not_in_flash("m68k_shift_tables") __attribute__((aligned(4))) m68ki_shift_32_table[65] =
 {
 	0x00000000, 0x80000000, 0xc0000000, 0xe0000000, 0xf0000000, 0xf8000000,
 	0xfc000000, 0xfe000000, 0xff000000, 0xff800000, 0xffc00000, 0xffe00000,
@@ -517,7 +517,7 @@ const uint8 m68ki_exception_cycle_table[5][256] =
 	}
 };
 
-const uint8 m68ki_ea_idx_cycle_table[64] =
+const uint8 __not_in_flash("m68k_ea_idx_cycles") __attribute__((aligned(4))) m68ki_ea_idx_cycle_table[64] =
 {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	 0, /* ..01.000 no memory indirect, base NULL             */
