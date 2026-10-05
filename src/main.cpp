@@ -50,6 +50,7 @@ extern "C" {
 #include "disc.h"
 #include "umac.h"
 #include "kbd.h"
+#include "cursor_accel.h"
 uint16_t via_get_t1_invert_time(void);
 }
 
@@ -368,7 +369,7 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
 #if USE_NESPAD
 
 static void nespad_tick1(void) {
-    static float cursor_joy_inc_dec = 1;
+    static cursor_accel_t accel = { CURSOR_STEP_MIN, 0 };
     nespad_read();
     bool a = (nespad_state & DPAD_A) || pressed_key[HID_KEY_KEYPAD_ENTER];
     bool up = (nespad_state & DPAD_UP) || pressed_key[HID_KEY_KEYPAD_8];
@@ -380,12 +381,8 @@ static void nespad_tick1(void) {
     } else if (gamepad1_bits.a && !a) {
         cursor_button = false;
     }
-    if ((gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right)) {
-        cursor_joy_inc_dec += 0.1;
-        if (cursor_joy_inc_dec > 30) cursor_joy_inc_dec = 30;
-    } else {
-        cursor_joy_inc_dec = 1;
-    }
+    const int cursor_joy_inc_dec = cursor_accel_step(&accel,
+        (gamepad1_bits.up && up) || (gamepad1_bits.down && down) || (gamepad1_bits.left && left) || (gamepad1_bits.right && right));
     gamepad1_bits.a = a;
     gamepad1_bits.b = (nespad_state & DPAD_B) != 0;
     //gamepad1_bits.start =
@@ -413,7 +410,7 @@ static void nespad_tick1(void) {
 }
 
 static void nespad_tick2(void) {
-    static float cursor_joy_inc_dec = 1;
+    static cursor_accel_t accel = { CURSOR_STEP_MIN, 0 };
     bool a = (nespad_state2 & DPAD_A) != 0;
     if (!gamepad2_bits.a && a) {
         cursor_button = true;
@@ -424,12 +421,8 @@ static void nespad_tick2(void) {
     bool down = (nespad_state2 & DPAD_DOWN) != 0;
     bool left = (nespad_state2 & DPAD_LEFT) != 0;
     bool right = (nespad_state2 & DPAD_RIGHT) != 0;
-    if ((gamepad2_bits.up && up) || (gamepad2_bits.down && down) || (gamepad2_bits.left && left) || (gamepad2_bits.right && right)) {
-        cursor_joy_inc_dec += 0.1;
-        if (cursor_joy_inc_dec > 30) cursor_joy_inc_dec = 30;
-    } else {
-        cursor_joy_inc_dec = 1;
-    }
+    const int cursor_joy_inc_dec = cursor_accel_step(&accel,
+        (gamepad2_bits.up && up) || (gamepad2_bits.down && down) || (gamepad2_bits.left && left) || (gamepad2_bits.right && right));
     gamepad2_bits.a = a;
     gamepad2_bits.b = (nespad_state2 & DPAD_B) != 0;
 //    gamepad2_bits.select = (nespad_state2 & DPAD_SELECT) != 0;
