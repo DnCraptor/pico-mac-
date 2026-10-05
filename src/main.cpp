@@ -622,7 +622,11 @@ static void     disc_setup(disc_descr_t discs[DISC_NUM_DRIVES]) {
     static FATFS fs;
     FRESULT fr = f_mount(&fs, "SD", 1);
     if (fr == FR_OK) {
-        fr = f_open(&fd, "/umac0.img", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+        /* /m128 keeps the Mac 128K files apart from other Macs that may be
+         * added later; the card root is still accepted for old cards. */
+        fr = f_open(&fd, "/m128/umac0.img", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+        if (fr != FR_OK)
+            fr = f_open(&fd, "/umac0.img", FA_OPEN_EXISTING | FA_READ | FA_WRITE);
     }
     if (fr == FR_OK) {
         discs[0].base = 0; // Means use R/W ops
@@ -803,6 +807,9 @@ static int64_t __not_in_flash_func(sound_alarm_callback)(alarm_id_t id, void *us
     }
 
     pwm_set_gpio_level(BEEPER_PIN, (uint8_t)(128 + (s16 >> 8)));
+#ifdef BEEPER_PIN_R
+    pwm_set_gpio_level(BEEPER_PIN_R, (uint8_t)(128 + (s16 >> 8)));
+#endif
 #ifdef HDMI_DVI
     hdmi_dvi_push_audio_sample(s16, s16);
 #endif
@@ -1169,6 +1176,19 @@ int main() {
         pwm_config_set_wrap(&_pwm_cfg, 0xFF);
         pwm_init(pwm_gpio_to_slice_num(BEEPER_PIN), &_pwm_cfg, true);
         pwm_set_gpio_level(BEEPER_PIN, 128);
+#ifdef BEEPER_PIN_R
+        /* Stereo jack: the same mono Mac sound on the right channel. */
+        gpio_set_function(BEEPER_PIN_R, GPIO_FUNC_PWM);
+        if (pwm_gpio_to_slice_num(BEEPER_PIN_R) != pwm_gpio_to_slice_num(BEEPER_PIN))
+            pwm_init(pwm_gpio_to_slice_num(BEEPER_PIN_R), &_pwm_cfg, true);
+        pwm_set_gpio_level(BEEPER_PIN_R, 128);
+#endif
+#ifdef SMPS_MODE_PIN
+        /* Keep the Pico's SMPS in PWM mode: less hiss on the audio jack. */
+        gpio_init(SMPS_MODE_PIN);
+        gpio_set_dir(SMPS_MODE_PIN, GPIO_OUT);
+        gpio_put(SMPS_MODE_PIN, 1);
+#endif
 
         snd_queue_head = 0;
         snd_queue_tail = 0;

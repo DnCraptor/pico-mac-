@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.13)
 # header in boards/<PICO_BOARD>.h supplies all pins and includes the base
 # chip header (pico2.h / pico.h).
 set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
-set(PICO_BOARD murmulator CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
+set(PICO_BOARD olimex-pico-pc CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
 list(APPEND PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
 include(pico_sdk_import.cmake)
 
@@ -40,7 +40,7 @@ option(SOFTTV "Enable TV soft composite output" OFF)
 #               OFF -> 464 KB (release-sized, uses umac-rom-464-vga.h).
 #               128 KB is the true stock size but needs a generated
 #               umac-rom-128-vga.h (not shipped); see docs/PHASE0.md.
-option(BENCH_EMU "Enable on-screen emulation-speed benchmark HUD" ON)
+option(BENCH_EMU "Enable on-screen emulation-speed benchmark HUD" OFF)
 option(DEV_SMALL_RAM "Use small (208K) Mac RAM for development" ON)
 
 if(DEV_SMALL_RAM)
@@ -49,7 +49,7 @@ else()
     set(UMAC_MEMSIZE_VAL 464)
 endif()
 
-set (PORT_VERSION "0.1.0")
+set (PORT_VERSION "0.1.1")
 
 #set(HDMI_DVI ON)
 
@@ -59,7 +59,6 @@ set (PORT_VERSION "0.1.0")
 ###set(TFT ON)
 ###set(ILI9341 ON)
 
-#set (MURM2 ON)
 #set (MONSTR ON)
 set(KBDUSB ON)
 
@@ -75,8 +74,11 @@ set(VREG_VOLTAGE "VREG_VOLTAGE_1_50" CACHE STRING "Core voltage enum, e.g. VREG_
 
 
 
-IF(MURM2)
+IF(MURM2 OR PICO_BOARD STREQUAL "murmulator2")
     SET(BUILD_NAME "m2p2-${PROJECT_NAME}-${CPU_MHZ}")
+    set (MURM2 ON)
+ELSEIF(PICO_BOARD STREQUAL "olimex-pico-pc")
+    SET(BUILD_NAME "PCp2-${PROJECT_NAME}-${CPU_MHZ}")
 ELSE()
     SET(BUILD_NAME "m1p2-${PROJECT_NAME}-${CPU_MHZ}")
 ENDIF()
@@ -202,11 +204,18 @@ ELSEIF(HDMI_DVI)
     # 400 MHz (the Phase 2 clock contract already forces this at runtime).
     IF(PICO_BOARD STREQUAL "murmulator2")
         SET(DVI_PIN_CFG murmulator2_cfg)
+    ELSEIF(PICO_BOARD STREQUAL "olimex-pico-pc")
+        SET(DVI_PIN_CFG Olimex_RP2040_PICO_PC_cfg)
     ELSE()
         SET(DVI_PIN_CFG murmulator_cfg)
     ENDIF()
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         HDMI_DVI DVI_MONOCHROME_TMDS=1 DVI_DEFAULT_SERIAL_CONFIG=${DVI_PIN_CFG})
+    IF(PICO_BOARD STREQUAL "olimex-pico-pc")
+        # HDMI clock (GPIO12/13) from PIO, not PWM: PWM slice 6 of these
+        # pins is the left audio channel (GPIO28), as in emu80v4.
+        target_compile_definitions(${PROJECT_NAME} PRIVATE DVI_USE_PIO_CLOCK)
+    ENDIF()
     target_link_libraries(${PROJECT_NAME} PRIVATE libdvi hdmi-dvi)
     SET(CPU_MHZ 400)
     string(REGEX REPLACE "-[0-9]+$" "-${CPU_MHZ}" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name

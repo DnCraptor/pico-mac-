@@ -14,7 +14,9 @@ pico-mac - проект основанный на эмуляторе umac, та�
 - mouse emulation on NES (Dendy-8) joysticsks
 - mouse emulation on USB joysticsks
 
-Файл дискового образа (umac0.img) необходимо расположить в корне sd-карточки.
+Файл дискового образа (umac0.img) необходимо расположить в каталоге `/m128` на sd-карточке (для старых карточек по-прежнему годится и корень). Если образа на карточке нет, загружается образ, встроенный в прошивку (только чтение).
+
+Сборка для Olimex RP2040-PICO-PC с Raspberry Pi Pico 2 (PCp2): `-DPICO_BOARD=olimex-pico-pc`, файл прошивки `PCp2-pico-mac-…uf2`. HDMI на GPIO12…19 (такт HDMI от PIO), звук только в аудиоразъём платы через ШИМ (левый канал GPIO28, правый GPIO27, звук моно в обоих), клавиатура PS/2 на GPIO0/1 или USB, NES-джойстик на UEXT (CLK GPIO5, LAT GPIO9, DATA GPIO20).
 
 Дополнительные благодарности:<br/>
 Базовое ПЗУ для эмулятора "1986-03 - 4D1F8172 - MacPlus v3.ROM" взято с сайта https://www.macintoshrepository.org/7038-all-macintosh-roms-68k-ppc- (архив Old_World_Mac_Roms.zip) и пропатчено для поддержки нестандартного объёма памяти и разрешения (оригинальное - 512х342)<br/>
