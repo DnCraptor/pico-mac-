@@ -123,6 +123,12 @@ void graphics_init(void) {
 
     dvi0.timing  = &HDMI_DVI_TIMING;
     dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;         // TUNE 2 (from CMake)
+#if defined(HDMI_BASE_PIN) && HDMI_BASE_PIN >= 32
+    // RP2350B (Waveshare RP2350-PiZero): HDMI is on GPIO32..39; PIO addresses
+    // GPIO0..31 by default. Shift the window to 16..47 before dvi_init(),
+    // otherwise pio_gpio_init() on the pins >= 32 does nothing (as in emu80v4).
+    pio_set_gpio_base(dvi0.ser_cfg.pio, 16);
+#endif
     dvi_init(&dvi0, next_striped_spin_lock_num(), next_striped_spin_lock_num());
 
     // Phase 4: HDMI audio. 800x600@60 pixel clock is 40 MHz; N=6144, CTS=40000

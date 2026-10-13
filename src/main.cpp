@@ -772,6 +772,15 @@ static void snd_capture_subtick(unsigned subtick)
 
 }
 
+#ifdef I2S_SOUND
+/* I2S module (z0p2): the alarm below is the sample clock, as for PWM; each
+ * sample goes straight into the PIO TX FIFO (as emu80v4 does). The I2S frame
+ * rate is set a little below the alarm rate (22254.5 Hz), so the FIFO stays
+ * full and at worst a sample is dropped, instead of the PIO running dry. */
+#define MAC_I2S_RATE 22254u
+static i2s_config_t snd_i2s;
+#endif
+
 /* Host playback clock. Guest RAM is never read here; samples were captured
  * at the Mini vMac subtick positions above. */
 static int64_t __not_in_flash_func(sound_alarm_callback)(alarm_id_t id, void *user_data)
@@ -799,9 +808,14 @@ static int64_t __not_in_flash_func(sound_alarm_callback)(alarm_id_t id, void *us
         }
     }
 
+#ifdef I2S_SOUND
+    if (!pio_sm_is_tx_fifo_full(snd_i2s.pio, snd_i2s.sm))
+        pio_sm_put(snd_i2s.pio, snd_i2s.sm, ((uint32_t)(uint16_t)s16 << 16) | (uint16_t)s16);
+#else
     pwm_set_gpio_level(BEEPER_PIN, (uint8_t)(128 + (s16 >> 8)));
 #ifdef BEEPER_PIN_R
     pwm_set_gpio_level(BEEPER_PIN_R, (uint8_t)(128 + (s16 >> 8)));
+#endif
 #endif
 #ifdef HDMI_DVI
     hdmi_dvi_push_audio_sample(s16, s16);
@@ -1163,6 +1177,14 @@ int main() {
     /* PWM/DVI playback clock. Guest RAM is captured by the 16 Mini vMac
      * sound subticks in poll_umac(); this alarm only drains the queue. */
     {
+#ifdef I2S_SOUND
+        snd_i2s = i2s_get_default_config();
+        snd_i2s.sample_freq = MAC_I2S_RATE;
+        snd_i2s.data_pin = AUDIO_DATA_PIN;
+        snd_i2s.clock_pin_base = AUDIO_CLOCK_PIN;
+        snd_i2s.dma_trans_count = 0;
+        i2s_init(&snd_i2s);
+#else
         pwm_config _pwm_cfg = pwm_get_default_config();
         gpio_set_function(BEEPER_PIN, GPIO_FUNC_PWM);
         pwm_config_set_clkdiv(&_pwm_cfg, 1.0f);
@@ -1182,6 +1204,7 @@ int main() {
         gpio_set_dir(SMPS_MODE_PIN, GPIO_OUT);
         gpio_put(SMPS_MODE_PIN, 1);
 #endif
+#endif // I2S_SOUND
 
         snd_queue_head = 0;
         snd_queue_tail = 0;
