@@ -17,23 +17,18 @@ cmake_minimum_required(VERSION 3.13)
 # header in boards/<PICO_BOARD>.h supplies all pins and includes the base
 # chip header (pico2.h / pico.h).
 set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
-set(PICO_BOARD waveshare_rp2350_pizero CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
+set(PICO_BOARD murmulator2 CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
 list(APPEND PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
-if(PICO_BOARD STREQUAL "waveshare_rp2350_pizero")
-    # Waveshare RP2350-PiZero (z0p2): HDMI on GPIO32..39, sound through an
-    # I2S module (PCM5102A) on GP10..12, USB keyboard.
-    set(I2S ON CACHE BOOL "Enable I2S sound" FORCE)
-endif()
 include(pico_sdk_import.cmake)
 
 project(pico-mac C CXX ASM)
 
 option(I2S "Enable I2S sound" OFF)
 option(I2S_CS4334 "Enable I2S CS4334 sound" OFF)
-option(VGA "Enable VGA" OFF)
+option(VGA "Enable VGA" ON)
 option(TFT "Enable TFT display" OFF)
 option(ILI9341 "Enable TFT ILI9341 display" OFF)
-option(HDMI_DVI "Enable HDMI display" ON)
+option(HDMI_DVI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
@@ -175,7 +170,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 IF(NOT I2S)
-#    SET(BUILD_NAME "${BUILD_NAME}-PWM")
+    IF(MURM2)
+        SET(BUILD_NAME "${BUILD_NAME}-PWM")
+    ENDIF()
     target_compile_definitions(${PROJECT_NAME} PRIVATE AUDIO_PWM_PIN=26)
 ELSEIF(I2S_CS4334)
     target_compile_definitions(${PROJECT_NAME} PRIVATE I2S_CS4334)
@@ -227,7 +224,7 @@ ELSEIF(HDMI_DVI)
     ENDIF()
     target_link_libraries(${PROJECT_NAME} PRIVATE libdvi hdmi-dvi)
     SET(CPU_MHZ 400)
-    string(REGEX REPLACE "-[0-9]+(-I2S|-CS4334)?$" "-${CPU_MHZ}\\1" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name
+    string(REGEX REPLACE "-[0-9]+(-I2S|-CS4334|-PWM)?$" "-${CPU_MHZ}\\1" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name
     SET(BUILD_NAME "${BUILD_NAME}-HDMI-DVI-${PORT_VERSION}")
 ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA_DRV)
@@ -276,18 +273,7 @@ ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE KBDPS2)
 ENDIF()
 
-IF(MURM2)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
-
-        # --- pins provided by boards/${PICO_BOARD}.h (Phase 2b) ---
-        
-        PICO_FLASH_SIZE_BYTES=${FLASH_SIZE}*1024
-        DEFAULT_THROTTLING=0
-    )
-ELSE()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
+target_compile_definitions(${PROJECT_NAME} PRIVATE
         PORT_VERSION="${PORT_VERSION}"
         CPU_MHZ=${CPU_MHZ}
 
@@ -311,7 +297,6 @@ ELSE()
         #DISP_HEIGHT=240
        MUSASHI_CNF="../external/umac/include/m68kconf.h"
     )
-ENDIF()
 
 IF(BENCH_EMU)
     # On-screen benchmark HUD (drawn into the Mac framebuffer); no UART/stdio.
