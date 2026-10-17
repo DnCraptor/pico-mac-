@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.13)
 # header in boards/<PICO_BOARD>.h supplies all pins and includes the base
 # chip header (pico2.h / pico.h).
 set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
-set(PICO_BOARD murmulator2 CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
+set(PICO_BOARD murmulator CACHE STRING "Board: murmulator | murmulator2 | olimex-pico-pc | waveshare_rp2040_pizero | waveshare_rp2350_pizero")
 list(APPEND PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
 include(pico_sdk_import.cmake)
 
@@ -28,7 +28,7 @@ option(I2S_CS4334 "Enable I2S CS4334 sound" OFF)
 option(VGA "Enable VGA" ON)
 option(TFT "Enable TFT display" OFF)
 option(ILI9341 "Enable TFT ILI9341 display" OFF)
-option(HDMI_DVI "Enable HDMI display" OFF)
+option(HDMI_DVI "Enable HDMI display" ON)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
@@ -224,7 +224,7 @@ ELSEIF(HDMI_DVI)
     ENDIF()
     target_link_libraries(${PROJECT_NAME} PRIVATE libdvi hdmi-dvi)
     SET(CPU_MHZ 400)
-    string(REGEX REPLACE "-[0-9]+(-I2S|-CS4334|-PWM)?$" "-${CPU_MHZ}\\1" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name
+  #  string(REGEX REPLACE "-[0-9]+(-I2S|-CS4334|-PWM)?$" "-${CPU_MHZ}\\1" BUILD_NAME "${BUILD_NAME}")  # fix stale MHz in name
     SET(BUILD_NAME "${BUILD_NAME}-HDMI-DVI-${PORT_VERSION}")
 ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA_DRV)

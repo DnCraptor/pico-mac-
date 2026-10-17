@@ -16,6 +16,10 @@
 #define PWM_PIN0       26
 #define PWM_PIN1       27
 #define BEEPER_PIN     28
+// I2S sound (cmake I2S=ON): TDA1387 DAC, DIN 26, BCK 27, LRCK 28 - the same
+// pins as the PWM sound, the board's sound jumpers select one of them
+#define AUDIO_DATA_PIN  26
+#define AUDIO_CLOCK_PIN 27
 #define SOUND_FREQUENCY 50000
 #define I2S_FREQUENCY   96000
 
